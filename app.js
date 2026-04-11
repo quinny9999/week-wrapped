@@ -614,3 +614,118 @@ saveState();
 renderWeeksSidebar();
 showActiveWeek();
 maybeAutoGenerateSundayRecap();
+
+
+
+// ===== WOW PATCH START =====
+function getAnticipationLine(n){
+  if(n===0) return "Start small.";
+  if(n<=2) return "It starts small.";
+  if(n<=4) return "You're building something.";
+  if(n<=6) return "This week has more shape than it feels.";
+  return "This is becoming a real week.";
+}
+
+function randomOpening(){
+  const opts = [
+    "This week counted.",
+    "You didn't waste this week.",
+    "This week mattered more than it felt."
+  ];
+  return opts[Math.floor(Math.random()*opts.length)];
+}
+
+function improvedInsight(weekNotes){
+  const joined = weekNotes.map(n=>n.text.toLowerCase()).join(" ");
+  if(/help|friend|family|mom|dad/.test(joined)) return "You showed up for people.";
+  if(/finally|booked|called|sent|appointment/.test(joined)) return "You handled things you were putting off.";
+  if(/run|gym|walk|exercise/.test(joined)) return "You chose effort.";
+  return "You didn't stop.";
+}
+
+function reflectionLine(){
+  const opts = [
+    "Most of this week was ordinary. That's where life happens.",
+    "Nothing dramatic. Still real.",
+    "This is what a real week looks like."
+  ];
+  return opts[Math.floor(Math.random()*opts.length)];
+}
+
+// Override buildSlides
+buildSlides = function(weekNotes){
+  const clean = weekNotes.slice(0,5);
+  if(!clean.length) return [];
+  const slides = [];
+  slides.push({type:"opening", kicker:"This was your week", title: randomOpening(), detail:""});
+  slides.push({type:"count", kicker:"You showed up", count: clean.length, label: clean.length===1?"moment":"moments", detail:""});
+  clean.slice(0,3).forEach((n,i)=> slides.push({type:"moment", kicker:`Moment ${i+1}`, moment:n.text, detail:""}));
+  slides.push({type:"pattern", kicker:"A pattern", headline: improvedInsight(clean), detail:""});
+  slides.push({type:"reframe", kicker:"A thought", title: reflectionLine(), detail:""});
+  slides.push({type:"closing", kicker:"What it adds up to", title:"You showed up more than you think.", detail:""});
+  return slides;
+}
+
+// Override showActiveWeek for Sunday lock + anticipation
+showActiveWeek = function(){
+  selectedView = { type: "active", id: activeWeekId };
+  wrapTitle.textContent = "Your weekly wrap";
+  notesTitle.textContent = "This week so far";
+  renderNotes();
+
+  const activeNotes = getNotesForWeek(activeWeekId);
+  const n = activeNotes.length;
+
+  if(!activeNotes.length){
+    clearSlides();
+    setStatus("Start small.", false);
+    return;
+  }
+
+  if (isSundayNow()){
+    const slides = buildSlides(activeNotes);
+    renderSlides(slides);
+    lastGeneratedWeekId = activeWeekId;
+    saveState();
+    setStatus("Your week is ready", true);
+  } else {
+    clearSlides();
+    setStatus(`${n} moments saved. ${getAnticipationLine(n)}`, false);
+  }
+}
+
+// Override sidebar labels
+renderWeeksSidebar = function(){
+  weeksList.innerHTML = "";
+  if (!archives.length){
+    weeksEmpty.style.display = "block";
+    return;
+  }
+  weeksEmpty.style.display = "none";
+  archives.slice().sort((a,b)=> new Date(b.archivedAt)-new Date(a.archivedAt))
+  .forEach((archive, idx)=>{
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "week-card" + (
+      selectedView.type === "archive" && selectedView.id === archive.id ? " active" : ""
+    );
+    button.addEventListener("click", ()=>{
+      selectedView = { type: "archive", id: archive.id };
+      showArchive(archive.id);
+      renderWeeksSidebar();
+    });
+
+    const title = document.createElement("div");
+    title.className = "week-title";
+    title.textContent = idx===0 ? "Last week" : `${idx+1} weeks ago`;
+
+    const subtitle = document.createElement("div");
+    subtitle.className = "week-subtitle";
+    subtitle.textContent = `${archive.noteCount} notes`;
+
+    button.appendChild(title);
+    button.appendChild(subtitle);
+    weeksList.appendChild(button);
+  });
+}
+// ===== WOW PATCH END =====
