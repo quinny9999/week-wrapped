@@ -1,0 +1,75 @@
+body {
+  font-family: Arial, sans-serif;
+  background: #f7f7f7;
+  margin: 0;
+  padding: 0;
+}
+
+.container {
+  max-width: 500px;
+  margin: 40px auto;
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+}
+
+h1 {
+  text-align: center;
+}
+
+.tagline {
+  text-align: center;
+  color: #666;
+  margin-bottom: 20px;
+}
+
+.input-section {
+  display: flex;
+  gap: 10px;
+}
+
+input {
+  flex: 1;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
+button {
+  padding: 10px 14px;
+  border: none;
+  background: #4CAF50;
+  color: white;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #45a049;
+}
+
+ul {
+  margin-top: 20px;
+  padding: 0;
+  list-style: none;
+}
+
+li {
+  padding: 8px;
+  border-bottom: 1px solid #eee;
+}
+
+.recap-btn {
+  margin-top: 20px;
+  width: 100%;
+  background: #333;
+}
+
+#recap {
+  margin-top: 20px;
+  padding: 15px;
+  background: #fafafa;
+  border-radius: 8px;
+  white-space: pre-wrap;
+}

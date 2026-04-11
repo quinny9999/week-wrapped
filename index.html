@@ -1,10 +1,27 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <title>WeekWrap</title>
-  </head>
-  <body>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>WeekWrap</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
     <h1>WeekWrap</h1>
-    <p>The app that proves you did more than you think.</p>
-  </body>
+    <p class="tagline">The app that proves you did more than you think.</p>
+
+    <div class="input-section">
+      <input type="text" id="noteInput" placeholder="What did you do?">
+      <button onclick="addNote()">Add</button>
+    </div>
+
+    <ul id="notesList"></ul>
+
+    <button class="recap-btn" onclick="generateRecap()">Generate My Week</button>
+
+    <div id="recap"></div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
 </html>
