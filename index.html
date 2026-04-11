@@ -22,7 +22,7 @@
             <div class="history-kicker">Saved weeks</div>
             <h2>Previous wraps</h2>
           </div>
-          <button id="backToThisWeekButton" class="ghost-btn sidebar-btn" type="button">This week</button>
+          <div class="sidebar-actions"><button id="backToThisWeekButton" class="ghost-btn sidebar-btn" type="button">This week</button><button id="deleteAllWeeksButton" class="ghost-btn subtle-danger-btn sidebar-btn" type="button">Delete all</button></div>
         </div>
         <div id="weeksList" class="weeks-list"></div>
         <div id="weeksEmpty" class="weeks-empty">
@@ -74,6 +74,7 @@
           </div>
 
           <div class="wrap-actions">
+            <button id="openWrapButton" class="ghost-btn primary-open-btn" type="button">Open your wrap</button>
             <button id="downloadWrapButton" class="ghost-btn" type="button">Download PDF</button>
             <button id="startNewWeekButton" class="ghost-btn danger-btn" type="button">Start new week</button>
           </div>
@@ -102,6 +103,31 @@
     </main>
 
     <button id="testRecapButton" class="test-button" type="button">Test wrap</button>
+  </div>
+
+
+  <div id="revealOverlay" class="reveal-overlay hidden" aria-hidden="true">
+    <div class="reveal-backdrop"></div>
+    <div class="reveal-panel">
+      <div class="reveal-topbar">
+        <div id="revealTitle" class="reveal-title">Your week is ready</div>
+        <button id="closeRevealButton" class="ghost-btn" type="button">Close</button>
+      </div>
+      <div class="reveal-intro" id="revealIntro">
+        <div class="reveal-intro-chip">WeekWrap</div>
+        <div class="reveal-intro-text">Your week is ready.</div>
+      </div>
+      <div class="reveal-stage">
+        <div class="reveal-viewport">
+          <div id="revealTrack" class="reveal-track"></div>
+        </div>
+      </div>
+      <div class="reveal-controls">
+        <button id="revealPrevButton" class="ghost-btn" type="button">Back</button>
+        <div id="revealCounter" class="slide-label">1 / 1</div>
+        <button id="revealNextButton" class="ghost-btn" type="button">Next</button>
+      </div>
+    </div>
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>

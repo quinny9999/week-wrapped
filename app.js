@@ -21,8 +21,10 @@ const weeksEmpty = document.getElementById("weeksEmpty");
 const wrapTitle = document.getElementById("wrapTitle");
 const notesTitle = document.getElementById("notesTitle");
 const downloadWrapButton = document.getElementById("downloadWrapButton");
+const openWrapButton = document.getElementById("openWrapButton");
 const startNewWeekButton = document.getElementById("startNewWeekButton");
 const backToThisWeekButton = document.getElementById("backToThisWeekButton");
+const deleteAllWeeksButton = document.getElementById("deleteAllWeeksButton");
 
 const slidesEmpty = document.getElementById("slidesEmpty");
 const slidesArea = document.getElementById("slidesArea");
@@ -166,21 +168,139 @@ function detectPattern(weekNotes) {
   };
 }
 
-function buildSlides(weekNotes) {
-  const cleanNotes = weekNotes.map((n) => n.text).slice(0, 5);
-  const pattern = detectPattern(weekNotes);
 
+function hashString(value) {
+  let hash = 0;
+  for (let i = 0; i < value.length; i += 1) {
+    hash = ((hash << 5) - hash) + value.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
+
+function pickVariant(options, seedText, offset = 0) {
+  if (!options || !options.length) return "";
+  const index = (hashString(seedText + "::" + offset) % options.length);
+  return options[index];
+}
+
+function getSlideSeed(weekNotes) {
+  return weekNotes.map((n) => n.text).join("|") + "::" + weekNotes.length;
+}
+
+function getInsightAndTheme(weekNotes) {
+  const joined = weekNotes.map(n => n.text.toLowerCase()).join(" ");
+  if (/help|friend|family|mom|dad|partner|sister|brother/.test(joined)) {
+    return {
+      headline: pickVariant([
+        "You showed up for other people.",
+        "A lot of this week was about being there for someone.",
+        "Part of this week was shaped by care for other people."
+      ], joined, 1),
+      theme: "connection"
+    };
+  }
+  if (/finally|booked|called|sent|appointment|dentist|emailed|submitted|paperwork/.test(joined)) {
+    return {
+      headline: pickVariant([
+        "You handled things you were putting off.",
+        "This week included some overdue follow-through.",
+        "You got to things that had been waiting."
+      ], joined, 2),
+      theme: "follow_through"
+    };
+  }
+  if (/run|gym|walk|exercise|slept|rested|cook|clean|shower/.test(joined)) {
+    return {
+      headline: pickVariant([
+        "You chose effort.",
+        "You took care of yourself in practical ways.",
+        "Some of this week was quiet self-maintenance."
+      ], joined, 3),
+      theme: "self_care"
+    };
+  }
+  return {
+    headline: pickVariant([
+      "You didn't stop.",
+      "You kept the week moving.",
+      "You kept showing up, even quietly."
+    ], joined, 4),
+    theme: "steady"
+  };
+}
+
+function getOpeningLine(weekNotes, seed) {
+  const count = weekNotes.length;
+  const options = count >= 6 ? [
+    "This week held more than it looked like.",
+    "You fit more into this week than it probably felt.",
+    "This week had more shape than it first seemed."
+  ] : [
+    "This week counted.",
+    "You didn't waste this week.",
+    "This week mattered more than it felt."
+  ];
+  return pickVariant(options, seed, 5);
+}
+
+function getClosingLine(seed) {
+  return pickVariant([
+    "You showed up more than you think.",
+    "This was a real week, and it counted.",
+    "Small things still add up to a life."
+  ], seed, 6);
+}
+
+function getReflectionLine(theme, seed) {
+  const byTheme = {
+    connection: [
+      "Sometimes a week is defined by who you showed up for.",
+      "Care counts, even when it looks ordinary.",
+      "Not every meaningful week is loud."
+    ],
+    follow_through: [
+      "Small acts of follow-through change the feel of a week.",
+      "Getting to one delayed thing can shift a lot.",
+      "Progress is often quieter than it sounds."
+    ],
+    self_care: [
+      "A lot of real life is maintenance, and that still matters.",
+      "Ordinary care is still care.",
+      "Looking after yourself is part of the week too."
+    ],
+    steady: [
+      "Nothing dramatic. Still real.",
+      "Most weeks are built out of ordinary things.",
+      "This is what a real week looks like."
+    ]
+  };
+  return pickVariant(byTheme[theme] || byTheme.steady, seed, 7);
+}
+
+function getMomentKicker(index, seed) {
+  const sets = [
+    ["A moment", "Another moment", "One more moment"],
+    ["Part of the week", "Also this", "And this too"],
+    ["This happened", "Then this", "And later"]
+  ];
+  const chosen = sets[hashString(seed + "::kickers") % sets.length];
+  return chosen[Math.min(index, chosen.length - 1)];
+}
+
+function buildSlides(weekNotes) {
+  const cleanNotes = weekNotes.slice(0, 4);
   if (!cleanNotes.length) return [];
 
+  const seed = getSlideSeed(cleanNotes);
+  const insight = getInsightAndTheme(cleanNotes);
   const slides = [];
 
   slides.push({
     type: "opening",
     kicker: "This was your week",
-    title: cleanNotes.length >= 5
-      ? "You fit more into this week than it probably felt like."
-      : "Even this week had more shape to it than it first seemed.",
-    detail: "Small moments count because they are still your life."
+    title: getOpeningLine(cleanNotes, seed),
+    detail: ""
   });
 
   slides.push({
@@ -188,37 +308,37 @@ function buildSlides(weekNotes) {
     kicker: "You showed up",
     count: cleanNotes.length,
     label: cleanNotes.length === 1 ? "moment captured" : "moments captured",
-    detail: "Not every week looks dramatic while you are living it."
+    detail: ""
   });
 
-  cleanNotes.slice(0, 3).forEach((text, index) => {
+  cleanNotes.slice(0, Math.min(2, cleanNotes.length)).forEach((note, index) => {
     slides.push({
       type: "moment",
-      kicker: `Moment ${index + 1}`,
-      moment: text,
-      detail: "This was one of the things that made up your week."
+      kicker: getMomentKicker(index, seed),
+      moment: note.text,
+      detail: ""
     });
   });
 
   slides.push({
     type: "pattern",
-    kicker: "A pattern",
-    headline: pattern.headline,
-    detail: pattern.detail
+    kicker: "A thread",
+    headline: insight.headline,
+    detail: ""
   });
 
   slides.push({
     type: "reframe",
-    kicker: "The reframe",
-    title: "It may not have felt like much while it was happening.",
-    detail: "But looking back, this was still a week in which you kept moving."
+    kicker: "A thought",
+    title: getReflectionLine(insight.theme, seed),
+    detail: ""
   });
 
   slides.push({
     type: "closing",
     kicker: "What it adds up to",
-    title: "You were here for your actual life.",
-    detail: "And that matters more than it usually gets credit for."
+    title: getClosingLine(seed),
+    detail: ""
   });
 
   return slides;
@@ -346,6 +466,23 @@ function setStatus(text, isReady) {
   statusBadge.classList.toggle("ready", !!isReady);
 }
 
+function updateOpenWrapButton() {
+  const slides = getDisplayedSlides();
+  const canOpen = slides.length > 0;
+  openWrapButton.disabled = !canOpen;
+
+  if (selectedView.type === "archive") {
+    openWrapButton.textContent = canOpen ? "Open saved wrap" : "Open saved wrap";
+    return;
+  }
+
+  if (canOpen) {
+    openWrapButton.textContent = "Open your wrap";
+  } else {
+    openWrapButton.textContent = "Open your wrap (Sunday)";
+  }
+}
+
 function renderWeeksSidebar() {
   weeksList.innerHTML = "";
 
@@ -396,31 +533,35 @@ function showActiveWeek() {
 
   if (!activeNotes.length) {
     clearSlides();
-    setStatus("Waiting for Sunday", false);
+    setStatus("Start small.", false);
+    updateOpenWrapButton();
     return;
   }
 
+  clearSlides();
+
   if (isSundayNow()) {
-    const slides = buildSlides(activeNotes);
-    renderSlides(slides);
     lastGeneratedWeekId = activeWeekId;
     saveState();
-    setStatus("Wrap ready", true);
+    setStatus("Your week is ready", true);
   } else {
-    clearSlides();
-    setStatus("Waiting for Sunday", false);
+    setStatus(`${activeNotes.length} ${activeNotes.length === 1 ? "moment" : "moments"} saved. Waiting for Sunday`, false);
   }
+
+  updateOpenWrapButton();
 }
 
 function showArchive(archiveId) {
   const archive = archives.find((item) => item.id === archiveId);
   if (!archive) return;
 
+  selectedView = { type: "archive", id: archive.id };
   wrapTitle.textContent = archive.label;
   notesTitle.textContent = "Current week notes";
   renderNotes();
-  renderSlides(archive.slides);
+  clearSlides();
   setStatus("Saved week", true);
+  updateOpenWrapButton();
 }
 
 function startNewWeek() {
@@ -570,11 +711,30 @@ testRecapButton.addEventListener("click", () => {
   setStatus("Test wrap", true);
 });
 
+openWrapButton.addEventListener("click", () => {
+  const slides = getDisplayedSlides();
+  if (!slides.length) return;
+  const title = selectedView.type === "archive" ? "Saved week" : "Your week is ready";
+  openReveal(slides, title);
+});
 downloadWrapButton.addEventListener("click", downloadCurrentWrapPdf);
 startNewWeekButton.addEventListener("click", startNewWeek);
 backToThisWeekButton.addEventListener("click", () => {
   showActiveWeek();
   renderWeeksSidebar();
+  updateOpenWrapButton();
+});
+
+deleteAllWeeksButton.addEventListener("click", () => {
+  archives = [];
+  notes = [];
+  activeWeekId = createWeekId();
+  lastGeneratedWeekId = "";
+  selectedView = { type: "active", id: activeWeekId };
+  saveState();
+  renderWeeksSidebar();
+  showActiveWeek();
+  updateOpenWrapButton();
 });
 
 prevSlideButton.addEventListener("click", () => {
@@ -616,116 +776,171 @@ showActiveWeek();
 maybeAutoGenerateSundayRecap();
 
 
+const revealOverlay = document.getElementById("revealOverlay");
+const revealTitle = document.getElementById("revealTitle");
+const revealIntro = document.getElementById("revealIntro");
+const revealTrack = document.getElementById("revealTrack");
+const revealStage = document.querySelector(".reveal-stage");
+const revealControls = document.querySelector(".reveal-controls");
+const revealPrevButton = document.getElementById("revealPrevButton");
+const revealNextButton = document.getElementById("revealNextButton");
+const revealCounter = document.getElementById("revealCounter");
+const closeRevealButton = document.getElementById("closeRevealButton");
 
-// ===== WOW PATCH START =====
-function getAnticipationLine(n){
-  if(n===0) return "Start small.";
-  if(n<=2) return "It starts small.";
-  if(n<=4) return "You're building something.";
-  if(n<=6) return "This week has more shape than it feels.";
-  return "This is becoming a real week.";
+let revealSlides = [];
+let revealIndex = 0;
+let revealTouchStartX = 0;
+let revealTouchEndX = 0;
+
+function renderNotesLocked() {
+  const activeNotes = getNotesForWeek(activeWeekId);
+  noteCount.textContent = activeNotes.length === 1 ? "1 moment saved" : `${activeNotes.length} moments saved`;
+  notesList.innerHTML = "";
+  notesList.classList.add("hidden-week-content");
+  emptyState.style.display = "block";
+  if (activeNotes.length === 0) {
+    emptyState.textContent = "Nothing yet. Start with one small thing from today.";
+  } else {
+    emptyState.textContent = "Your moments are tucked away until reveal day.";
+  }
 }
 
-function randomOpening(){
-  const opts = [
-    "This week counted.",
-    "You didn't waste this week.",
-    "This week mattered more than it felt."
-  ];
-  return opts[Math.floor(Math.random()*opts.length)];
+function openReveal(slides, titleText) {
+  if (!slides || !slides.length) return;
+  revealSlides = slides;
+  revealIndex = 0;
+  revealTitle.textContent = titleText || "Your week is ready";
+  revealTrack.innerHTML = "";
+  slides.forEach((slide) => {
+    const node = document.createElement("div");
+    node.className = "reveal-slide";
+    node.innerHTML = renderSlideContent(slide);
+    revealTrack.appendChild(node);
+  });
+  revealOverlay.classList.remove("hidden");
+  document.body.style.overflow = "hidden";
+  revealIntro.classList.remove("hidden");
+  revealStage.classList.remove("show");
+  revealControls.classList.remove("show");
+  updateRevealUI();
+  setTimeout(() => {
+    revealIntro.classList.add("hidden");
+    revealStage.classList.add("show");
+    revealControls.classList.add("show");
+    updateRevealUI();
+  }, 700);
 }
 
-function improvedInsight(weekNotes){
-  const joined = weekNotes.map(n=>n.text.toLowerCase()).join(" ");
-  if(/help|friend|family|mom|dad/.test(joined)) return "You showed up for people.";
-  if(/finally|booked|called|sent|appointment/.test(joined)) return "You handled things you were putting off.";
-  if(/run|gym|walk|exercise/.test(joined)) return "You chose effort.";
-  return "You didn't stop.";
+function closeReveal() {
+  revealOverlay.classList.add("hidden");
+  document.body.style.overflow = "";
 }
 
-function reflectionLine(){
-  const opts = [
-    "Most of this week was ordinary. That's where life happens.",
-    "Nothing dramatic. Still real.",
-    "This is what a real week looks like."
-  ];
-  return opts[Math.floor(Math.random()*opts.length)];
+function updateRevealUI() {
+  if (!revealSlides.length) {
+    revealCounter.textContent = "0 / 0";
+    revealPrevButton.disabled = true;
+    revealNextButton.disabled = true;
+    return;
+  }
+  revealTrack.style.transform = `translateX(-${revealIndex * 100}%)`;
+  revealCounter.textContent = `${revealIndex + 1} / ${revealSlides.length}`;
+  revealPrevButton.disabled = revealIndex === 0;
+  revealNextButton.disabled = revealIndex === revealSlides.length - 1;
 }
 
-// Override buildSlides
-buildSlides = function(weekNotes){
-  const clean = weekNotes.slice(0,5);
-  if(!clean.length) return [];
-  const slides = [];
-  slides.push({type:"opening", kicker:"This was your week", title: randomOpening(), detail:""});
-  slides.push({type:"count", kicker:"You showed up", count: clean.length, label: clean.length===1?"moment":"moments", detail:""});
-  clean.slice(0,3).forEach((n,i)=> slides.push({type:"moment", kicker:`Moment ${i+1}`, moment:n.text, detail:""}));
-  slides.push({type:"pattern", kicker:"A pattern", headline: improvedInsight(clean), detail:""});
-  slides.push({type:"reframe", kicker:"A thought", title: reflectionLine(), detail:""});
-  slides.push({type:"closing", kicker:"What it adds up to", title:"You showed up more than you think.", detail:""});
-  return slides;
-}
-
-// Override showActiveWeek for Sunday lock + anticipation
-showActiveWeek = function(){
+// Override showActiveWeek to lock content before Sunday
+showActiveWeek = function() {
   selectedView = { type: "active", id: activeWeekId };
   wrapTitle.textContent = "Your weekly wrap";
   notesTitle.textContent = "This week so far";
-  renderNotes();
 
   const activeNotes = getNotesForWeek(activeWeekId);
-  const n = activeNotes.length;
+  if (isSundayNow()) {
+    renderNotes();
+  } else {
+    renderNotesLocked();
+  }
 
-  if(!activeNotes.length){
+  if (!activeNotes.length) {
     clearSlides();
     setStatus("Start small.", false);
     return;
   }
 
-  if (isSundayNow()){
-    const slides = buildSlides(activeNotes);
-    renderSlides(slides);
-    lastGeneratedWeekId = activeWeekId;
-    saveState();
+  if (isSundayNow()) {
+    clearSlides();
     setStatus("Your week is ready", true);
+    const slides = buildSlides(activeNotes);
+    if (lastGeneratedWeekId !== activeWeekId) {
+      lastGeneratedWeekId = activeWeekId;
+      saveState();
+      setTimeout(() => openReveal(slides, "Your week is ready"), 250);
+    }
   } else {
     clearSlides();
-    setStatus(`${n} moments saved. ${getAnticipationLine(n)}`, false);
+    const n = activeNotes.length;
+    let anticipation = "It starts small.";
+    if (n <= 2) anticipation = "It starts small.";
+    else if (n <= 4) anticipation = "You're building something.";
+    else if (n <= 6) anticipation = "This week has more shape than it feels.";
+    else anticipation = "This is becoming a real week.";
+    setStatus(`${n} moments saved. ${anticipation}`, false);
   }
-}
+};
 
-// Override sidebar labels
-renderWeeksSidebar = function(){
-  weeksList.innerHTML = "";
-  if (!archives.length){
-    weeksEmpty.style.display = "block";
-    return;
+// Override showArchive to use full-screen reveal
+showArchive = function(archiveId) {
+  const archive = archives.find((item) => item.id === archiveId);
+  if (!archive) return;
+
+  wrapTitle.textContent = archive.label;
+  notesTitle.textContent = "This week so far";
+  renderNotesLocked();
+  clearSlides();
+  setStatus("Saved week", true);
+  openReveal(archive.slides, archive.label);
+};
+
+// Make test button open the same full-screen reveal
+testRecapButton.replaceWith(testRecapButton.cloneNode(true));
+const freshTestButton = document.getElementById("testRecapButton");
+freshTestButton.addEventListener("click", () => {
+  const slides = buildSlides(getNotesForWeek(activeWeekId));
+  if (!slides.length) return;
+  openReveal(slides, "Test wrap");
+});
+
+// events for reveal
+closeRevealButton.addEventListener("click", closeReveal);
+revealPrevButton.addEventListener("click", () => {
+  if (revealIndex > 0) {
+    revealIndex -= 1;
+    updateRevealUI();
   }
-  weeksEmpty.style.display = "none";
-  archives.slice().sort((a,b)=> new Date(b.archivedAt)-new Date(a.archivedAt))
-  .forEach((archive, idx)=>{
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "week-card" + (
-      selectedView.type === "archive" && selectedView.id === archive.id ? " active" : ""
-    );
-    button.addEventListener("click", ()=>{
-      selectedView = { type: "archive", id: archive.id };
-      showArchive(archive.id);
-      renderWeeksSidebar();
-    });
+});
+revealNextButton.addEventListener("click", () => {
+  if (revealIndex < revealSlides.length - 1) {
+    revealIndex += 1;
+    updateRevealUI();
+  }
+});
+revealTrack.addEventListener("touchstart", (event) => {
+  revealTouchStartX = event.changedTouches[0].screenX;
+});
+revealTrack.addEventListener("touchend", (event) => {
+  revealTouchEndX = event.changedTouches[0].screenX;
+  const delta = revealTouchEndX - revealTouchStartX;
+  if (Math.abs(delta) < 40) return;
+  if (delta < 0 && revealIndex < revealSlides.length - 1) {
+    revealIndex += 1;
+    updateRevealUI();
+  } else if (delta > 0 && revealIndex > 0) {
+    revealIndex -= 1;
+    updateRevealUI();
+  }
+});
 
-    const title = document.createElement("div");
-    title.className = "week-title";
-    title.textContent = idx===0 ? "Last week" : `${idx+1} weeks ago`;
-
-    const subtitle = document.createElement("div");
-    subtitle.className = "week-subtitle";
-    subtitle.textContent = `${archive.noteCount} notes`;
-
-    button.appendChild(title);
-    button.appendChild(subtitle);
-    weeksList.appendChild(button);
-  });
-}
-// ===== WOW PATCH END =====
+// Re-run current view with new behavior
+showActiveWeek();
+updateOpenWrapButton();
