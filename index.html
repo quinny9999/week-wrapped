@@ -1,25 +1,86 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>WeekWrap</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div class="container">
-    <h1>WeekWrap</h1>
-    <p class="tagline">The app that proves you did more than you think.</p>
+  <div class="app-shell">
+    <div class="bg-orb orb-1"></div>
+    <div class="bg-orb orb-2"></div>
+    <div class="bg-orb orb-3"></div>
 
-    <div class="input-section">
-      <input type="text" id="noteInput" placeholder="What did you do?">
-      <button onclick="addNote()">Add</button>
-    </div>
+    <main class="app-frame">
+      <header class="hero glass-panel">
+        <div class="hero-chip">Sunday feelings, saved all week</div>
+        <h1>WeekWrap</h1>
+        <p class="tagline">
+          Capture little moments now. Your weekly wrap appears as a story you can swipe through.
+        </p>
+      </header>
 
-    <ul id="notesList"></ul>
+      <section class="composer glass-panel">
+        <label for="noteInput" class="input-label">What happened?</label>
+        <div class="input-row">
+          <input
+            type="text"
+            id="noteInput"
+            placeholder="Helped my friend move"
+            maxlength="180"
+          />
+          <button id="addButton" class="primary-btn" type="button">Add</button>
+        </div>
+        <p class="helper-text">Messy, quick, and real is perfect.</p>
+      </section>
 
-    <button class="recap-btn" onclick="generateRecap()">Generate My Week</button>
+      <section class="notes glass-panel">
+        <div class="section-head">
+          <h2>This week so far</h2>
+          <span id="noteCount" class="meta-pill">0 notes</span>
+        </div>
+        <ul id="notesList" class="notes-list"></ul>
+        <div id="emptyState" class="empty-state">
+          Nothing yet. Start with one small thing from today.
+        </div>
+      </section>
 
-    <div id="recap"></div>
+      <section class="wrap-shell glass-panel">
+        <div class="section-head wrap-head">
+          <div>
+            <h2>Your weekly wrap</h2>
+            <p class="section-subtitle">One thought at a time, like a story.</p>
+          </div>
+          <span id="statusBadge" class="status-badge">Waiting for Sunday</span>
+        </div>
+
+        <div id="slidesEmpty" class="slides-empty">
+          Add notes during the week. On Sunday, your wrap appears here automatically.
+        </div>
+
+        <div id="slidesArea" class="slides-area hidden">
+          <div class="progress-shell">
+            <div id="progressBar" class="progress-bar"></div>
+          </div>
+
+          <div class="slides-viewport">
+            <div id="slidesTrack" class="slides-track"></div>
+          </div>
+
+          <div class="slides-controls">
+            <button id="prevSlide" class="ghost-btn" type="button">Back</button>
+            <div id="slideLabel" class="slide-label">1 / 1</div>
+            <button id="nextSlide" class="ghost-btn" type="button">Next</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <button id="testRecapButton" class="test-button" type="button">Test wrap</button>
   </div>
 
   <script src="app.js"></script>
