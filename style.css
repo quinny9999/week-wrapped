@@ -308,7 +308,7 @@ h2 { margin: 0; font-size: 1.05rem; }
   font-size: 0.96rem;
 }
 
-.hidden { display: none; }
+.hidden { display: none !important; }
 
 .progress-shell {
   width: 100%;
@@ -656,7 +656,7 @@ h2 { margin: 0; font-size: 1.05rem; }
 }
 
 .reveal-stage.show {
-  display: flex;
+  display: flex !important;
 }
 
 .reveal-viewport {
@@ -809,4 +809,8 @@ h2 { margin: 0; font-size: 1.05rem; }
   .dictate-btn {
     width: 100%;
   }
+}
+
+.reveal-intro.hidden {
+  display: none !important;
 }
