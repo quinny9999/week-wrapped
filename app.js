@@ -26,6 +26,13 @@ const openWrapButton = document.getElementById("openWrapButton");
 const startNewWeekButton = document.getElementById("startNewWeekButton");
 const backToThisWeekButton = document.getElementById("backToThisWeekButton");
 const deleteAllWeeksButton = document.getElementById("deleteAllWeeksButton");
+const wrapSummaryCard = document.getElementById("wrapSummaryCard");
+const wrapHeadline = document.getElementById("wrapHeadline");
+const wrapInsight = document.getElementById("wrapInsight");
+const wrapStats = document.getElementById("wrapStats");
+const shareImageButton = document.getElementById("shareImageButton");
+const downloadImageButton = document.getElementById("downloadImageButton");
+const copyCaptionButton = document.getElementById("copyCaptionButton");
 
 const slidesEmpty = document.getElementById("slidesEmpty");
 const slidesArea = document.getElementById("slidesArea");
@@ -52,6 +59,9 @@ let revealSlides = [];
 let revealIndex = 0;
 let revealTouchStartX = 0;
 let revealTouchEndX = 0;
+let currentRevealMood = "mood-default";
+let currentWrapTheme = { mood: "warm_progress" };
+let currentWrapMeta = null;
 
 function createWeekId() {
   return "week_" + Date.now();
@@ -115,6 +125,200 @@ async function generateAiWrap(notes, weekLabel) {
   return await response.json();
 }
 
+
+function normalizeMood(mood) {
+  const allowed = new Set([
+    "warm_progress",
+    "gentle_reflective",
+    "social_bright",
+    "calm_recovery"
+  ]);
+  return allowed.has(mood) ? mood : "warm_progress";
+}
+
+function moodClassFromTheme(theme) {
+  const mood = normalizeMood(theme?.mood);
+  if (mood === "gentle_reflective") return "mood-reflective";
+  if (mood === "social_bright") return "mood-social";
+  if (mood === "calm_recovery") return "mood-calm";
+  if (mood === "warm_progress") return "mood-progress";
+  return "mood-default";
+}
+
+function applyRevealMood(theme) {
+  const classes = ["mood-default", "mood-progress", "mood-reflective", "mood-social", "mood-calm"];
+  revealOverlay.classList.remove(...classes);
+  currentRevealMood = moodClassFromTheme(theme);
+  revealOverlay.classList.add(currentRevealMood);
+}
+
+
+function applyWrapMood(theme) {
+  const classes = ["mood-default", "mood-progress", "mood-reflective", "mood-social", "mood-calm"];
+  const moodClass = moodClassFromTheme(theme);
+  document.body.classList.remove(...classes);
+  document.body.classList.add(moodClass);
+  currentWrapTheme = { mood: normalizeMood(theme?.mood) };
+}
+
+function getShareMoodLabel(theme) {
+  const mood = normalizeMood(theme?.mood);
+  if (mood === "gentle_reflective") return "Reflective week";
+  if (mood === "social_bright") return "Social week";
+  if (mood === "calm_recovery") return "Reset week";
+  return "Momentum week";
+}
+
+function getThemePalette(theme) {
+  const mood = normalizeMood(theme?.mood);
+  if (mood === "gentle_reflective") {
+    return {
+      bg: [54, 41, 74],
+      bg2: [142, 105, 167],
+      text: [247, 240, 255],
+      muted: [225, 213, 243],
+      chipBg: [233, 221, 255],
+      chipText: [86, 53, 118]
+    };
+  }
+  if (mood === "social_bright") {
+    return {
+      bg: [255, 137, 92],
+      bg2: [255, 204, 92],
+      text: [63, 35, 17],
+      muted: [103, 70, 45],
+      chipBg: [255, 240, 216],
+      chipText: [132, 74, 29]
+    };
+  }
+  if (mood === "calm_recovery") {
+    return {
+      bg: [96, 158, 132],
+      bg2: [196, 228, 202],
+      text: [21, 52, 39],
+      muted: [49, 93, 73],
+      chipBg: [232, 247, 236],
+      chipText: [46, 95, 74]
+    };
+  }
+  return {
+    bg: [94, 91, 212],
+    bg2: [252, 180, 108],
+    text: [35, 24, 18],
+    muted: [85, 66, 55],
+    chipBg: [246, 234, 225],
+    chipText: [111, 74, 55]
+  };
+}
+
+function getWrapDates(weekNotes) {
+  const ordered = weekNotes.slice().sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+  return ordered.map((note) => new Date(note.createdAt));
+}
+
+function deriveStreaks(weekNotes) {
+  const dates = getWrapDates(weekNotes);
+  if (!dates.length) {
+    return { longestStreak: 0, activeDays: 0, busiestDay: "No notes yet" };
+  }
+
+  const uniqueDays = [];
+  const countsByDay = new Map();
+  dates.forEach((date) => {
+    const key = date.toISOString().slice(0, 10);
+    countsByDay.set(key, (countsByDay.get(key) || 0) + 1);
+  });
+
+  const dayKeys = Array.from(countsByDay.keys()).sort();
+  let longestStreak = 1;
+  let streak = 1;
+  for (let i = 1; i < dayKeys.length; i += 1) {
+    const prev = new Date(dayKeys[i - 1] + "T00:00:00");
+    const curr = new Date(dayKeys[i] + "T00:00:00");
+    const diff = Math.round((curr - prev) / 86400000);
+    if (diff === 1) {
+      streak += 1;
+      longestStreak = Math.max(longestStreak, streak);
+    } else {
+      streak = 1;
+    }
+  }
+
+  let busiestDayKey = dayKeys[0];
+  dayKeys.forEach((key) => {
+    if (countsByDay.get(key) > countsByDay.get(busiestDayKey)) busiestDayKey = key;
+  });
+
+  const busiestDayDate = new Date(busiestDayKey + "T00:00:00");
+  return {
+    longestStreak,
+    activeDays: dayKeys.length,
+    busiestDay: busiestDayDate.toLocaleDateString([], { weekday: "long" })
+  };
+}
+
+function buildLocalWrapMeta(weekNotes, themeOverride = null) {
+  const pattern = detectPattern(weekNotes);
+  const streaks = deriveStreaks(weekNotes);
+  const theme = themeOverride || inferThemeFromNotes(weekNotes);
+  const headline = streaks.longestStreak >= 3
+    ? `You built momentum across ${streaks.longestStreak} days in a row.`
+    : weekNotes.length >= 5
+      ? "This week had more shape and movement than it first seemed."
+      : "A few small moments still made a real week.";
+  const insight = pattern.headline;
+  const shareCaption = `${getDisplayedLabel()} — ${headline} ${insight}`;
+  return {
+    theme,
+    headline,
+    insight,
+    shareCaption,
+    stats: [
+      { label: "Notes", value: String(weekNotes.length) },
+      { label: "Active days", value: String(streaks.activeDays) },
+      { label: "Best streak", value: `${streaks.longestStreak} day${streaks.longestStreak === 1 ? "" : "s"}` },
+      { label: "Busiest day", value: streaks.busiestDay }
+    ]
+  };
+}
+
+function inferThemeFromNotes(weekNotes) {
+  const joined = weekNotes.map((n) => n.text.toLowerCase()).join(" | ");
+  if (/friend|party|dinner|family|birthday|coffee|visited|together/.test(joined)) return { mood: "social_bright" };
+  if (/rest|slept|reset|recovery|nap|quiet|walk|breathe|calm/.test(joined)) return { mood: "calm_recovery" };
+  if (/thought|journal|read|reflect|therapy|museum|grateful|felt/.test(joined)) return { mood: "gentle_reflective" };
+  return { mood: "warm_progress" };
+}
+
+function renderWrapSummary(meta) {
+  currentWrapMeta = meta || null;
+  if (!meta) {
+    wrapSummaryCard.classList.add("hidden");
+    wrapHeadline.textContent = "Your week will show up here.";
+    wrapInsight.textContent = "Add notes through the week and the app will pull out the thread.";
+    wrapStats.innerHTML = "";
+    shareImageButton.disabled = true;
+    downloadImageButton.disabled = true;
+    copyCaptionButton.disabled = true;
+    return;
+  }
+
+  applyWrapMood(meta.theme);
+  wrapSummaryCard.classList.remove("hidden");
+  wrapHeadline.textContent = meta.headline || "This week had a shape of its own.";
+  wrapInsight.textContent = meta.insight || "A thread will appear here once your wrap is ready.";
+  wrapStats.innerHTML = "";
+  (meta.stats || []).forEach((stat) => {
+    const pill = document.createElement("div");
+    pill.className = "wrap-stat-pill";
+    pill.innerHTML = `<span class="wrap-stat-label">${stat.label}</span><strong>${stat.value}</strong>`;
+    wrapStats.appendChild(pill);
+  });
+  shareImageButton.disabled = false;
+  downloadImageButton.disabled = false;
+  copyCaptionButton.disabled = false;
+}
+
 function convertAiCardsToSlides(cards) {
   return cards.map((card, index) => {
     if (card.type === "opening") {
@@ -154,7 +358,10 @@ function convertAiCardsToSlides(cards) {
 }
 
 async function generateSlidesForWeek(weekNotes) {
-  if (!weekNotes.length) return [];
+  if (!weekNotes.length) {
+    renderWrapSummary(null);
+    return [];
+  }
 
   try {
     const ai = await generateAiWrap(
@@ -163,12 +370,26 @@ async function generateSlidesForWeek(weekNotes) {
     );
 
     if (ai && Array.isArray(ai.cards) && ai.cards.length) {
+      const theme = ai.theme || inferThemeFromNotes(weekNotes);
+      applyRevealMood(theme);
+      applyWrapMood(theme);
+      renderWrapSummary({
+        theme,
+        headline: ai.headline || buildLocalWrapMeta(weekNotes, theme).headline,
+        insight: ai.insight || buildLocalWrapMeta(weekNotes, theme).insight,
+        shareCaption: ai.share_caption || `${getWeekLabelForNotes(weekNotes)} — ${ai.headline || "A week with a story to tell."}`,
+        stats: Array.isArray(ai.stats) && ai.stats.length ? ai.stats : buildLocalWrapMeta(weekNotes, theme).stats
+      });
       return convertAiCardsToSlides(ai.cards);
     }
   } catch (error) {
     console.error("AI wrap failed, falling back to local wrap:", error);
   }
 
+  const localMeta = buildLocalWrapMeta(weekNotes);
+  applyRevealMood(localMeta.theme);
+  applyWrapMood(localMeta.theme);
+  renderWrapSummary(localMeta);
   return buildSlides(weekNotes);
 }
 
@@ -412,6 +633,7 @@ function clearSlides() {
   slidesTrack.innerHTML = "";
   slidesArea.classList.add("hidden");
   slidesEmpty.classList.remove("hidden");
+  renderWrapSummary(null);
   updateSlidesUI();
 }
 
@@ -477,7 +699,15 @@ function updateRevealUI() {
   if (controls) controls.classList.add("show");
 }
 
-function openReveal(slides, title) {
+function openReveal(slides, title, theme = null) {
+  if (theme) {
+    applyRevealMood(theme);
+  } else if (selectedView.type === "archive") {
+    applyRevealMood({ mood: "gentle_reflective" });
+  } else if (!currentRevealMood) {
+    applyRevealMood({ mood: "warm_progress" });
+  }
+
   renderRevealSlides(slides);
   revealTitle.textContent = title || "Your week is ready";
   revealOverlay.classList.remove("hidden");
@@ -537,7 +767,8 @@ function renderWeeksSidebar() {
 
       const subtitle = document.createElement("div");
       subtitle.className = "week-subtitle";
-      subtitle.textContent = `${archive.noteCount} ${archive.noteCount === 1 ? "note" : "notes"} saved`;
+      const moodLabel = archive.meta ? ` • ${getShareMoodLabel(archive.meta.theme)}` : "";
+      subtitle.textContent = `${archive.noteCount} ${archive.noteCount === 1 ? "note" : "notes"} saved${moodLabel}`;
 
       button.appendChild(title);
       button.appendChild(subtitle);
@@ -553,23 +784,18 @@ async function showActiveWeek() {
 
   const activeNotes = getNotesForWeek(activeWeekId);
 
+  clearSlides();
+
   if (!activeNotes.length) {
-    clearSlides();
+    applyWrapMood({ mood: "warm_progress" });
     setStatus("Waiting for Sunday", false);
     updateOpenWrapButton();
     return;
   }
 
   if (isSundayNow()) {
-    clearSlides();
-    setStatus("Generating your wrap...", false);
-    const slides = await generateSlidesForWeek(activeNotes);
-    renderSlides(slides);
-    lastGeneratedWeekId = activeWeekId;
-    saveState();
-    setStatus("Wrap ready", true);
+    setStatus("Ready to generate", true);
   } else {
-    clearSlides();
     setStatus("Waiting for Sunday", false);
   }
 
@@ -585,6 +811,10 @@ function showArchive(archiveId) {
   notesTitle.textContent = "Current week notes";
   renderNotes();
   clearSlides();
+  if (archive.meta) {
+    renderWrapSummary(archive.meta);
+    applyWrapMood(archive.meta.theme);
+  }
   setStatus("Saved week", true);
   updateOpenWrapButton();
 }
@@ -599,7 +829,8 @@ function startNewWeek() {
       label: getWeekLabelForNotes(activeNotes),
       noteCount: activeNotes.length,
       archivedAt: new Date().toISOString(),
-      slides: buildSlides(activeNotes)
+      slides: currentSlides.length ? currentSlides : buildSlides(activeNotes),
+      meta: currentWrapMeta || buildLocalWrapMeta(activeNotes)
     };
     archives.unshift(archive);
     notes = notes.filter((note) => note.weekId !== activeWeekId);
@@ -615,19 +846,15 @@ function startNewWeek() {
 }
 
 function maybeAutoGenerateSundayRecap() {
-  if (!isSundayNow()) return;
+  updateOpenWrapButton();
+}
 
-  const activeNotes = getNotesForWeek(activeWeekId);
-  if (!activeNotes.length) return;
-
-  if (lastGeneratedWeekId !== activeWeekId) {
-    lastGeneratedWeekId = activeWeekId;
-    saveState();
+function getDisplayedMeta() {
+  if (selectedView.type === "archive") {
+    const archive = archives.find((item) => item.id === selectedView.id);
+    return archive ? archive.meta : null;
   }
-
-  if (selectedView.type === "active") {
-    showActiveWeek();
-  }
+  return currentWrapMeta;
 }
 
 function getDisplayedSlides() {
@@ -637,7 +864,7 @@ function getDisplayedSlides() {
   }
 
   if (!isSundayNow()) return [];
-  return currentSlides.length ? currentSlides : buildSlides(getNotesForWeek(activeWeekId));
+  return currentSlides.length ? currentSlides : [];
 }
 
 function getDisplayedLabel() {
@@ -654,6 +881,180 @@ function wrapTextLines(doc, text, x, y, maxWidth, lineHeight) {
   const lines = doc.splitTextToSize(text, maxWidth);
   doc.text(lines, x, y);
   return y + (lines.length * lineHeight);
+}
+
+function buildShareCanvasData() {
+  const meta = getDisplayedMeta();
+  const slides = getDisplayedSlides();
+  if (!meta || !slides.length) return null;
+  const palette = getThemePalette(meta.theme);
+  const summaryBits = (meta.stats || []).slice(0, 4).map((s) => `${s.label}: ${s.value}`);
+  return {
+    meta,
+    slides,
+    palette,
+    title: getDisplayedLabel(),
+    bullets: summaryBits
+  };
+}
+
+function renderShareCanvas() {
+  const data = buildShareCanvasData();
+  if (!data) return null;
+  const canvas = document.createElement("canvas");
+  const width = 1080;
+  const height = 1350;
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  const gradient = ctx.createLinearGradient(0, 0, width, height);
+  gradient.addColorStop(0, `rgb(${data.palette.bg.join(",")})`);
+  gradient.addColorStop(1, `rgb(${data.palette.bg2.join(",")})`);
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, width, height);
+
+  ctx.fillStyle = "rgba(255,255,255,0.18)";
+  ctx.beginPath();
+  ctx.arc(930, 160, 180, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(180, 1180, 220, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = `rgb(${data.palette.chipBg.join(",")})`;
+  roundRect(ctx, 72, 72, 240, 56, 28, true, false);
+  ctx.fillStyle = `rgb(${data.palette.chipText.join(",")})`;
+  ctx.font = "700 28px Inter, sans-serif";
+  ctx.fillText("WeekWrap", 112, 109);
+
+  ctx.fillStyle = `rgb(${data.palette.text.join(",")})`;
+  ctx.font = "800 42px Inter, sans-serif";
+  ctx.fillText(data.title, 72, 190);
+
+  ctx.font = "700 76px Inter, sans-serif";
+  wrapCanvasText(ctx, data.meta.headline, 72, 300, 880, 88);
+
+  ctx.font = "500 34px Inter, sans-serif";
+  ctx.fillStyle = `rgb(${data.palette.muted.join(",")})`;
+  const insightY = wrapCanvasText(ctx, data.meta.insight, 72, 520, 860, 46);
+
+  ctx.fillStyle = "rgba(255,255,255,0.22)";
+  roundRect(ctx, 72, insightY + 26, 936, 320, 36, true, false);
+
+  ctx.fillStyle = `rgb(${data.palette.text.join(",")})`;
+  ctx.font = "700 30px Inter, sans-serif";
+  ctx.fillText(getShareMoodLabel(data.meta.theme), 112, insightY + 88);
+
+  const stats = data.meta.stats || [];
+  stats.slice(0, 4).forEach((stat, index) => {
+    const col = index % 2;
+    const row = Math.floor(index / 2);
+    const x = 112 + col * 420;
+    const y = insightY + 146 + row * 94;
+    ctx.fillStyle = `rgb(${data.palette.muted.join(",")})`;
+    ctx.font = "600 24px Inter, sans-serif";
+    ctx.fillText(stat.label.toUpperCase(), x, y);
+    ctx.fillStyle = `rgb(${data.palette.text.join(",")})`;
+    ctx.font = "800 38px Inter, sans-serif";
+    ctx.fillText(String(stat.value), x, y + 42);
+  });
+
+  ctx.fillStyle = "rgba(255,255,255,0.22)";
+  roundRect(ctx, 72, 980, 936, 220, 36, true, false);
+  ctx.fillStyle = `rgb(${data.palette.text.join(",")})`;
+  ctx.font = "700 26px Inter, sans-serif";
+  ctx.fillText("A few moments from the week", 112, 1038);
+  ctx.font = "500 28px Inter, sans-serif";
+  const moments = data.slides.filter((s) => s.moment).slice(0, 3).map((s) => `• ${s.moment}`);
+  wrapCanvasText(ctx, moments.join("\n"), 112, 1094, 840, 42);
+
+  ctx.fillStyle = `rgb(${data.palette.text.join(",")})`;
+  ctx.font = "600 24px Inter, sans-serif";
+  ctx.fillText("Made with WeekWrap", 72, 1288);
+  return canvas;
+}
+
+function roundRect(ctx, x, y, width, height, radius, fill, stroke) {
+  const r = Math.min(radius, width / 2, height / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + width, y, x + width, y + height, r);
+  ctx.arcTo(x + width, y + height, x, y + height, r);
+  ctx.arcTo(x, y + height, x, y, r);
+  ctx.arcTo(x, y, x + width, y, r);
+  ctx.closePath();
+  if (fill) ctx.fill();
+  if (stroke) ctx.stroke();
+}
+
+function wrapCanvasText(ctx, text, x, y, maxWidth, lineHeight) {
+  const paragraphs = String(text || "").split("\n");
+  let currentY = y;
+  paragraphs.forEach((paragraph) => {
+    const words = paragraph.split(/\s+/);
+    let line = "";
+    words.forEach((word) => {
+      const test = line ? `${line} ${word}` : word;
+      if (ctx.measureText(test).width > maxWidth && line) {
+        ctx.fillText(line, x, currentY);
+        currentY += lineHeight;
+        line = word;
+      } else {
+        line = test;
+      }
+    });
+    if (line) {
+      ctx.fillText(line, x, currentY);
+      currentY += lineHeight;
+    }
+  });
+  return currentY;
+}
+
+async function shareCurrentWrapImage() {
+  const canvas = renderShareCanvas();
+  if (!canvas) return;
+  const meta = getDisplayedMeta();
+  const fileName = `weekwrap-${getDisplayedLabel().replace(/\s+/g, "-").toLowerCase()}.png`;
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+  if (!blob) return;
+
+  const file = new File([blob], fileName, { type: "image/png" });
+  if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+    await navigator.share({
+      title: getDisplayedLabel(),
+      text: meta?.shareCaption || getDisplayedLabel(),
+      files: [file]
+    });
+    return;
+  }
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+async function downloadCurrentWrapImage() {
+  const canvas = renderShareCanvas();
+  if (!canvas) return;
+  const url = canvas.toDataURL("image/png");
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `weekwrap-${getDisplayedLabel().replace(/\s+/g, "-").toLowerCase()}.png`;
+  link.click();
+}
+
+async function copyCurrentCaption() {
+  const meta = getDisplayedMeta();
+  if (!meta?.shareCaption) return;
+  await navigator.clipboard.writeText(meta.shareCaption);
+  copyCaptionButton.textContent = "Copied";
+  window.setTimeout(() => {
+    copyCaptionButton.textContent = "Copy caption";
+  }, 1300);
 }
 
 function downloadCurrentWrapPdf() {
@@ -735,7 +1136,7 @@ testRecapButton.addEventListener("click", async () => {
   setStatus("Generating test wrap...", false);
   const slides = await generateSlidesForWeek(weekNotes);
   renderSlides(slides);
-  openReveal(slides, "Test wrap");
+  openReveal(slides, "Test wrap", currentWrapTheme);
   setStatus("Test wrap", true);
   updateOpenWrapButton();
 });
@@ -744,7 +1145,7 @@ openWrapButton.addEventListener("click", async () => {
   if (selectedView.type === "archive") {
     const slides = getDisplayedSlides();
     if (!slides.length) return;
-    openReveal(slides, "Saved week");
+    openReveal(slides, "Saved week", getDisplayedMeta()?.theme || { mood: "gentle_reflective" });
     return;
   }
 
@@ -754,12 +1155,15 @@ openWrapButton.addEventListener("click", async () => {
   setStatus("Generating your wrap...", false);
   const slides = await generateSlidesForWeek(weekNotes);
   renderSlides(slides);
-  openReveal(slides, "Your week is ready");
+  openReveal(slides, "Your week is ready", currentWrapTheme);
   setStatus("Wrap ready", true);
   updateOpenWrapButton();
 });
 
 downloadWrapButton.addEventListener("click", downloadCurrentWrapPdf);
+shareImageButton.addEventListener("click", () => shareCurrentWrapImage().catch(console.error));
+downloadImageButton.addEventListener("click", downloadCurrentWrapImage);
+copyCaptionButton.addEventListener("click", () => copyCurrentCaption().catch(console.error));
 startNewWeekButton.addEventListener("click", startNewWeek);
 backToThisWeekButton.addEventListener("click", async () => {
   await showActiveWeek();
@@ -846,6 +1250,7 @@ revealTrack.addEventListener("touchend", (event) => {
   }
 });
 
+applyRevealMood({ mood: "warm_progress" });
 saveState();
 renderWeeksSidebar();
 showActiveWeek();

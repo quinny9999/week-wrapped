@@ -75,10 +75,22 @@
             <span id="statusBadge" class="status-badge">Waiting for Sunday</span>
           </div>
 
-          <div class="wrap-actions">
+          <div id="wrapSummaryCard" class="wrap-summary-card hidden">
+            <div class="wrap-summary-topline">This week at a glance</div>
+            <div id="wrapHeadline" class="wrap-headline">Your week will show up here.</div>
+            <div id="wrapInsight" class="wrap-insight">Add notes through the week and the app will pull out the thread.</div>
+            <div id="wrapStats" class="wrap-stats"></div>
+          </div>
+
+          <div class="wrap-actions wrap-actions-primary">
             <button id="openWrapButton" class="ghost-btn primary-open-btn" type="button">Open your wrap</button>
             <button id="downloadWrapButton" class="ghost-btn" type="button">Download PDF</button>
             <button id="startNewWeekButton" class="ghost-btn danger-btn" type="button">Start new week</button>
+          </div>
+          <div class="wrap-actions wrap-actions-share">
+            <button id="shareImageButton" class="ghost-btn share-btn" type="button">Share wrap</button>
+            <button id="downloadImageButton" class="ghost-btn" type="button">Download image</button>
+            <button id="copyCaptionButton" class="ghost-btn" type="button">Copy caption</button>
           </div>
 
           <div id="slidesEmpty" class="slides-empty">
