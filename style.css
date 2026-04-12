@@ -810,3 +810,51 @@ h2 { margin: 0; font-size: 1.05rem; }
     width: 100%;
   }
 }
+
+
+.sidebar-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.subtle-danger-btn {
+  background: rgba(141, 74, 74, 0.08);
+  color: #7a4a4a;
+}
+
+.subtle-danger-btn:hover {
+  background: rgba(141, 74, 74, 0.12);
+}
+
+.theme-soft {
+  background: linear-gradient(160deg, rgba(255,255,255,0.42) 0%, rgba(250,240,232,0.24) 100%);
+}
+
+.theme-connection {
+  background: linear-gradient(160deg, rgba(255,248,244,0.44) 0%, rgba(244,221,212,0.30) 100%);
+}
+
+.theme-energy {
+  background: linear-gradient(160deg, rgba(255,252,244,0.44) 0%, rgba(240,229,204,0.30) 100%);
+}
+
+.theme-progress {
+  background: linear-gradient(160deg, rgba(248,250,255,0.44) 0%, rgba(221,230,244,0.30) 100%);
+}
+
+.reveal-controls {
+  position: fixed;
+  left: 50%;
+  bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  width: min(92vw, 980px);
+  z-index: 3;
+}
+
+@media (max-width: 640px) {
+  .sidebar-actions {
+    width: 100%;
+  }
+}

@@ -16,14 +16,18 @@ const emptyState = document.getElementById("emptyState");
 const noteCount = document.getElementById("noteCount");
 const statusBadge = document.getElementById("statusBadge");
 const addButton = document.getElementById("addButton");
+const dictateButton = document.getElementById("dictateButton");
+const dictateStatus = document.getElementById("dictateStatus");
 const testRecapButton = document.getElementById("testRecapButton");
 const weeksList = document.getElementById("weeksList");
 const weeksEmpty = document.getElementById("weeksEmpty");
 const wrapTitle = document.getElementById("wrapTitle");
 const notesTitle = document.getElementById("notesTitle");
 const downloadWrapButton = document.getElementById("downloadWrapButton");
+const openWrapButton = document.getElementById("openWrapButton");
 const startNewWeekButton = document.getElementById("startNewWeekButton");
 const backToThisWeekButton = document.getElementById("backToThisWeekButton");
+const deleteAllWeeksButton = document.getElementById("deleteAllWeeksButton");
 
 const slidesEmpty = document.getElementById("slidesEmpty");
 const slidesArea = document.getElementById("slidesArea");
@@ -37,6 +41,78 @@ let currentSlides = [];
 let currentSlideIndex = 0;
 let touchStartX = 0;
 let touchEndX = 0;
+let speechRecognition = null;
+let isListening = false;
+
+function setDictateStatus(message) {
+  dictateStatus.textContent = message || "";
+}
+
+function setupSpeechRecognition() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    setDictateStatus("Voice input is not available in this browser.");
+    dictateButton.disabled = true;
+    return;
+  }
+
+  speechRecognition = new SpeechRecognition();
+  speechRecognition.lang = "en-US";
+  speechRecognition.interimResults = false;
+  speechRecognition.maxAlternatives = 1;
+
+  speechRecognition.onstart = () => {
+    isListening = true;
+    dictateButton.classList.add("is-listening");
+    dictateButton.textContent = "Listening...";
+    setDictateStatus("Listening...");
+  };
+
+  speechRecognition.onresult = (event) => {
+    const transcript = event.results?.[0]?.[0]?.transcript?.trim() || "";
+    if (transcript) {
+      noteInput.value = transcript;
+      setDictateStatus("Voice note captured. Press Add, or edit it first.");
+    } else {
+      setDictateStatus("I didn't catch that. Try again.");
+    }
+  };
+
+  speechRecognition.onerror = (event) => {
+    const code = event.error || "";
+    if (code === "not-allowed" || code === "service-not-allowed") {
+      setDictateStatus("Microphone access was blocked.");
+    } else if (code === "no-speech") {
+      setDictateStatus("No speech was detected.");
+    } else {
+      setDictateStatus("Voice input did not work this time.");
+    }
+  };
+
+  speechRecognition.onend = () => {
+    isListening = false;
+    dictateButton.classList.remove("is-listening");
+    dictateButton.textContent = "Dictate";
+  };
+}
+
+function startDictation() {
+  if (!speechRecognition) {
+    setupSpeechRecognition();
+    if (!speechRecognition) return;
+  }
+
+  if (isListening) {
+    speechRecognition.stop();
+    return;
+  }
+
+  try {
+    speechRecognition.start();
+  } catch (error) {
+    setDictateStatus("Voice input is already running.");
+  }
+}
 
 function createWeekId() {
   return "week_" + Date.now();
@@ -100,14 +176,27 @@ async function generateAiWrap(notes, weekLabel) {
   return await response.json();
 }
 
+function inferCardTheme(card) {
+  const text = ((card.text || "") + " " + (card.type || "")).toLowerCase();
+
+  if (/friend|family|mom|dad|partner|care|showed up for/.test(text)) return "theme-connection";
+  if (/run|gym|walk|rest|sleep|self|effort/.test(text)) return "theme-energy";
+  if (/booked|called|finally|sent|dentist|paperwork|follow-through/.test(text)) return "theme-progress";
+  if (/ready|counted|mattered|adds up|week/.test(text)) return "theme-soft";
+  return "theme-soft";
+}
+
 function convertAiCardsToSlides(cards) {
   return cards.map((card, index) => {
+    const themeClass = inferCardTheme(card);
+
     if (card.type === "opening") {
       return {
         type: "opening",
         kicker: "This was your week",
         title: card.text,
-        detail: ""
+        detail: "",
+        themeClass
       };
     }
 
@@ -116,7 +205,8 @@ function convertAiCardsToSlides(cards) {
         type: "moment",
         kicker: index <= 1 ? "A moment" : "Another moment",
         moment: card.text,
-        detail: ""
+        detail: "",
+        themeClass
       };
     }
 
@@ -125,7 +215,8 @@ function convertAiCardsToSlides(cards) {
         type: "pattern",
         kicker: "A thread",
         headline: card.text,
-        detail: ""
+        detail: "",
+        themeClass
       };
     }
 
@@ -133,7 +224,8 @@ function convertAiCardsToSlides(cards) {
       type: "closing",
       kicker: "What it adds up to",
       title: card.text,
-      detail: ""
+      detail: "",
+      themeClass
     };
   });
 }
@@ -243,59 +335,176 @@ function detectPattern(weekNotes) {
   };
 }
 
+
+function hashString(value) {
+  let hash = 0;
+  for (let i = 0; i < value.length; i += 1) {
+    hash = ((hash << 5) - hash) + value.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
+
+function pickVariant(options, seedText, offset = 0) {
+  if (!options || !options.length) return "";
+  const index = (hashString(seedText + "::" + offset) % options.length);
+  return options[index];
+}
+
+function getSlideSeed(weekNotes) {
+  return weekNotes.map((n) => n.text).join("|") + "::" + weekNotes.length;
+}
+
+function getInsightAndTheme(weekNotes) {
+  const joined = weekNotes.map(n => n.text.toLowerCase()).join(" ");
+  if (/help|friend|family|mom|dad|partner|sister|brother/.test(joined)) {
+    return {
+      headline: pickVariant([
+        "You showed up for other people.",
+        "A lot of this week was about being there for someone.",
+        "Part of this week was shaped by care for other people."
+      ], joined, 1),
+      theme: "connection"
+    };
+  }
+  if (/finally|booked|called|sent|appointment|dentist|emailed|submitted|paperwork/.test(joined)) {
+    return {
+      headline: pickVariant([
+        "You handled things you were putting off.",
+        "This week included some overdue follow-through.",
+        "You got to things that had been waiting."
+      ], joined, 2),
+      theme: "follow_through"
+    };
+  }
+  if (/run|gym|walk|exercise|slept|rested|cook|clean|shower/.test(joined)) {
+    return {
+      headline: pickVariant([
+        "You chose effort.",
+        "You took care of yourself in practical ways.",
+        "Some of this week was quiet self-maintenance."
+      ], joined, 3),
+      theme: "self_care"
+    };
+  }
+  return {
+    headline: pickVariant([
+      "You didn't stop.",
+      "You kept the week moving.",
+      "You kept showing up, even quietly."
+    ], joined, 4),
+    theme: "steady"
+  };
+}
+
+function getOpeningLine(weekNotes, seed) {
+  const count = weekNotes.length;
+  const options = count >= 6 ? [
+    "This week held more than it looked like.",
+    "You fit more into this week than it probably felt.",
+    "This week had more shape than it first seemed."
+  ] : [
+    "This week counted.",
+    "You didn't waste this week.",
+    "This week mattered more than it felt."
+  ];
+  return pickVariant(options, seed, 5);
+}
+
+function getClosingLine(seed) {
+  return pickVariant([
+    "You showed up more than you think.",
+    "This was a real week, and it counted.",
+    "Small things still add up to a life."
+  ], seed, 6);
+}
+
+function getReflectionLine(theme, seed) {
+  const byTheme = {
+    connection: [
+      "Sometimes a week is defined by who you showed up for.",
+      "Care counts, even when it looks ordinary.",
+      "Not every meaningful week is loud."
+    ],
+    follow_through: [
+      "Small acts of follow-through change the feel of a week.",
+      "Getting to one delayed thing can shift a lot.",
+      "Progress is often quieter than it sounds."
+    ],
+    self_care: [
+      "A lot of real life is maintenance, and that still matters.",
+      "Ordinary care is still care.",
+      "Looking after yourself is part of the week too."
+    ],
+    steady: [
+      "Nothing dramatic. Still real.",
+      "Most weeks are built out of ordinary things.",
+      "This is what a real week looks like."
+    ]
+  };
+  return pickVariant(byTheme[theme] || byTheme.steady, seed, 7);
+}
+
+function getMomentKicker(index, seed) {
+  const sets = [
+    ["A moment", "Another moment", "One more moment"],
+    ["Part of the week", "Also this", "And this too"],
+    ["This happened", "Then this", "And later"]
+  ];
+  const chosen = sets[hashString(seed + "::kickers") % sets.length];
+  return chosen[Math.min(index, chosen.length - 1)];
+}
+
 function buildSlides(weekNotes) {
-  const cleanNotes = weekNotes.map((n) => n.text).slice(0, 5);
-  const pattern = detectPattern(weekNotes);
+  if (!weekNotes.length) return [];
 
-  if (!cleanNotes.length) return [];
-
+  const seed = getSlideSeed(weekNotes);
+  const insight = getInsightAndTheme(weekNotes);
   const slides = [];
 
+  // Opening
   slides.push({
     type: "opening",
     kicker: "This was your week",
-    title: cleanNotes.length >= 5
-      ? "You fit more into this week than it probably felt like."
-      : "Even this week had more shape to it than it first seemed.",
-    detail: "Small moments count because they are still your life."
+    title: getOpeningLine(weekNotes, seed),
+    detail: ""
   });
 
+  // Count
   slides.push({
     type: "count",
     kicker: "You showed up",
-    count: cleanNotes.length,
-    label: cleanNotes.length === 1 ? "moment captured" : "moments captured",
-    detail: "Not every week looks dramatic while you are living it."
+    count: weekNotes.length,
+    label: weekNotes.length === 1 ? "moment captured" : "moments captured",
+    detail: ""
   });
 
-  cleanNotes.slice(0, 3).forEach((text, index) => {
+  // 🔥 ONE SLIDE PER NOTE (MAIN CHANGE)
+  weekNotes.forEach((note, index) => {
     slides.push({
       type: "moment",
-      kicker: `Moment ${index + 1}`,
-      moment: text,
-      detail: "This was one of the things that made up your week."
+      kicker: getMomentKicker(index, seed),
+      moment: note.text,
+      detail: ""
     });
   });
 
-  slides.push({
-    type: "pattern",
-    kicker: "A pattern",
-    headline: pattern.headline,
-    detail: pattern.detail
-  });
+  // Insight (only if enough notes)
+  if (weekNotes.length >= 3) {
+    slides.push({
+      type: "pattern",
+      kicker: "A thread",
+      headline: insight.headline,
+      detail: ""
+    });
+  }
 
-  slides.push({
-    type: "reframe",
-    kicker: "The reframe",
-    title: "It may not have felt like much while it was happening.",
-    detail: "But looking back, this was still a week in which you kept moving."
-  });
-
+  // Closing
   slides.push({
     type: "closing",
     kicker: "What it adds up to",
-    title: "You were here for your actual life.",
-    detail: "And that matters more than it usually gets credit for."
+    title: getClosingLine(seed),
+    detail: ""
   });
 
   return slides;
@@ -305,7 +514,7 @@ function renderSlideContent(slide) {
   switch (slide.type) {
     case "opening":
       return `
-        <div class="slide-inner slide-opening">
+        <div class="slide-inner slide-opening ${slide.themeClass || ""}">
           <div class="slide-kicker">${slide.kicker}</div>
           <div class="slide-main">
             <div class="big-serif">${slide.title}</div>
@@ -316,7 +525,7 @@ function renderSlideContent(slide) {
       `;
     case "count":
       return `
-        <div class="slide-inner slide-count">
+        <div class="slide-inner slide-count ${slide.themeClass || ""}">
           <div class="slide-kicker">${slide.kicker}</div>
           <div class="slide-main">
             <div class="count-number">${slide.count}</div>
@@ -327,7 +536,7 @@ function renderSlideContent(slide) {
       `;
     case "moment":
       return `
-        <div class="slide-inner slide-moment">
+        <div class="slide-inner slide-moment ${slide.themeClass || ""}">
           <div class="slide-kicker">${slide.kicker}</div>
           <div class="slide-main">
             <div class="moment-text">${slide.moment}</div>
@@ -338,7 +547,7 @@ function renderSlideContent(slide) {
       `;
     case "pattern":
       return `
-        <div class="slide-inner slide-pattern">
+        <div class="slide-inner slide-pattern ${slide.themeClass || ""}">
           <div class="slide-kicker">${slide.kicker}</div>
           <div class="slide-main">
             <div class="pattern-text">${slide.headline}</div>
@@ -349,7 +558,7 @@ function renderSlideContent(slide) {
       `;
     case "reframe":
       return `
-        <div class="slide-inner slide-reframe">
+        <div class="slide-inner slide-reframe ${slide.themeClass || ""}">
           <div class="slide-kicker">${slide.kicker}</div>
           <div class="slide-main">
             <div class="big-serif">${slide.title}</div>
@@ -360,7 +569,7 @@ function renderSlideContent(slide) {
       `;
     case "closing":
       return `
-        <div class="slide-inner slide-closing">
+        <div class="slide-inner slide-closing ${slide.themeClass || ""}">
           <div class="slide-kicker">${slide.kicker}</div>
           <div class="slide-main">
             <div class="big-serif">${slide.title}</div>
@@ -423,6 +632,23 @@ function setStatus(text, isReady) {
   statusBadge.classList.toggle("ready", !!isReady);
 }
 
+function updateOpenWrapButton() {
+  const slides = getDisplayedSlides();
+  const canOpen = slides.length > 0;
+  openWrapButton.disabled = !canOpen;
+
+  if (selectedView.type === "archive") {
+    openWrapButton.textContent = canOpen ? "Open saved wrap" : "Open saved wrap";
+    return;
+  }
+
+  if (canOpen) {
+    openWrapButton.textContent = "Open your wrap";
+  } else {
+    openWrapButton.textContent = "Open your wrap (Sunday)";
+  }
+}
+
 function renderWeeksSidebar() {
   weeksList.innerHTML = "";
 
@@ -463,7 +689,7 @@ function renderWeeksSidebar() {
     });
 }
 
-async function showActiveWeek() {
+function showActiveWeek() {
   selectedView = { type: "active", id: activeWeekId };
   wrapTitle.textContent = "Your weekly wrap";
   notesTitle.textContent = "This week so far";
@@ -473,33 +699,35 @@ async function showActiveWeek() {
 
   if (!activeNotes.length) {
     clearSlides();
-    setStatus("Waiting for Sunday", false);
+    setStatus("Start small.", false);
+    updateOpenWrapButton();
     return;
   }
 
+  clearSlides();
+
   if (isSundayNow()) {
-    clearSlides();
-    setStatus("Generating your wrap...", false);
-    const slides = await generateSlidesForWeek(activeNotes);
-    renderSlides(slides);
     lastGeneratedWeekId = activeWeekId;
     saveState();
-    setStatus("Wrap ready", true);
+    setStatus("Your week is ready", true);
   } else {
-    clearSlides();
-    setStatus("Waiting for Sunday", false);
+    setStatus(`${activeNotes.length} ${activeNotes.length === 1 ? "moment" : "moments"} saved. Waiting for Sunday`, false);
   }
+
+  updateOpenWrapButton();
 }
 
 function showArchive(archiveId) {
   const archive = archives.find((item) => item.id === archiveId);
   if (!archive) return;
 
+  selectedView = { type: "archive", id: archive.id };
   wrapTitle.textContent = archive.label;
   notesTitle.textContent = "Current week notes";
   renderNotes();
-  renderSlides(archive.slides);
+  clearSlides();
   setStatus("Saved week", true);
+  updateOpenWrapButton();
 }
 
 function startNewWeek() {
@@ -638,6 +866,7 @@ function downloadCurrentWrapPdf() {
 }
 
 addButton.addEventListener("click", addNote);
+dictateButton.addEventListener("click", startDictation);
 noteInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter") addNote();
 });
@@ -645,17 +874,67 @@ noteInput.addEventListener("keydown", (event) => {
 testRecapButton.addEventListener("click", async () => {
   const weekNotes = getNotesForWeek(activeWeekId);
   if (!weekNotes.length) return;
-  setStatus("Generating test wrap...", false);
-  const slides = await generateSlidesForWeek(weekNotes);
-  renderSlides(slides);
-  setStatus("Test wrap", true);
+
+  try {
+    setStatus("Generating test wrap...", false);
+    const aiSlides = await generateSlidesForWeek(weekNotes);
+    openReveal(aiSlides, "Test wrap");
+    setStatus("Test wrap", true);
+  } catch (error) {
+    console.error(error);
+    const slides = buildSlides(weekNotes);
+    openReveal(slides, "Test wrap");
+    setStatus("Test wrap", true);
+  }
 });
 
+openWrapButton.addEventListener("click", async () => {
+  const slides = getDisplayedSlides();
+  if (!slides.length) return;
+
+  if (selectedView.type === "archive") {
+    const title = "Saved week";
+    openReveal(slides, title);
+    return;
+  }
+
+  const weekNotes = getNotesForWeek(activeWeekId);
+  if (!weekNotes.length) return;
+
+  try {
+    openWrapButton.disabled = true;
+    openWrapButton.textContent = "Opening...";
+    setStatus("Generating your wrap...", false);
+
+    const aiSlides = await generateSlidesForWeek(weekNotes);
+    openReveal(aiSlides, "Your week is ready");
+    setStatus("Wrap ready", true);
+  } catch (error) {
+    console.error(error);
+    openReveal(slides, "Your week is ready");
+    setStatus("Wrap ready", true);
+  } finally {
+    updateOpenWrapButton();
+  }
+});
 downloadWrapButton.addEventListener("click", downloadCurrentWrapPdf);
 startNewWeekButton.addEventListener("click", startNewWeek);
-backToThisWeekButton.addEventListener("click", async () => {
-  await showActiveWeek();
+backToThisWeekButton.addEventListener("click", () => {
+  showActiveWeek();
   renderWeeksSidebar();
+  updateOpenWrapButton();
+});
+
+deleteAllWeeksButton.addEventListener("click", () => {
+  archives = [];
+  notes = [];
+  activeWeekId = createWeekId();
+  lastGeneratedWeekId = "";
+  selectedView = { type: "active", id: activeWeekId };
+  saveState();
+  renderWeeksSidebar();
+  showActiveWeek();
+  updateOpenWrapButton();
 });
 
 prevSlideButton.addEventListener("click", () => {
@@ -692,6 +971,177 @@ slidesTrack.addEventListener("touchend", (event) => {
 });
 
 saveState();
+setupSpeechRecognition();
 renderWeeksSidebar();
 showActiveWeek();
 maybeAutoGenerateSundayRecap();
+
+
+const revealOverlay = document.getElementById("revealOverlay");
+const revealTitle = document.getElementById("revealTitle");
+const revealIntro = document.getElementById("revealIntro");
+const revealTrack = document.getElementById("revealTrack");
+const revealStage = document.querySelector(".reveal-stage");
+const revealControls = document.querySelector(".reveal-controls");
+const revealPrevButton = document.getElementById("revealPrevButton");
+const revealNextButton = document.getElementById("revealNextButton");
+const revealCounter = document.getElementById("revealCounter");
+const closeRevealButton = document.getElementById("closeRevealButton");
+
+let revealSlides = [];
+let revealIndex = 0;
+let revealTouchStartX = 0;
+let revealTouchEndX = 0;
+
+function renderNotesLocked() {
+  const activeNotes = getNotesForWeek(activeWeekId);
+  noteCount.textContent = activeNotes.length === 1 ? "1 moment saved" : `${activeNotes.length} moments saved`;
+  notesList.innerHTML = "";
+  notesList.classList.add("hidden-week-content");
+  emptyState.style.display = "block";
+  if (activeNotes.length === 0) {
+    emptyState.textContent = "Nothing yet. Start with one small thing from today.";
+  } else {
+    emptyState.textContent = "Your moments are tucked away until reveal day.";
+  }
+}
+
+function openReveal(slides, titleText) {
+  if (!slides || !slides.length) return;
+  revealSlides = slides;
+  revealIndex = 0;
+  revealTitle.textContent = titleText || "Your week is ready";
+  revealTrack.innerHTML = "";
+  slides.forEach((slide) => {
+    const node = document.createElement("div");
+    node.className = "reveal-slide";
+    node.innerHTML = renderSlideContent(slide);
+    revealTrack.appendChild(node);
+  });
+  revealOverlay.classList.remove("hidden");
+  document.body.style.overflow = "hidden";
+  revealIntro.classList.remove("hidden");
+  revealStage.classList.remove("show");
+  revealControls.classList.remove("show");
+  updateRevealUI();
+  setTimeout(() => {
+    revealIntro.classList.add("hidden");
+    revealStage.classList.add("show");
+    revealControls.classList.add("show");
+    updateRevealUI();
+  }, 700);
+}
+
+function closeReveal() {
+  revealOverlay.classList.add("hidden");
+  document.body.style.overflow = "";
+}
+
+function updateRevealUI() {
+  if (!revealSlides.length) {
+    revealCounter.textContent = "0 / 0";
+    revealPrevButton.disabled = true;
+    revealNextButton.disabled = true;
+    return;
+  }
+  revealTrack.style.transform = `translateX(-${revealIndex * 100}%)`;
+  revealCounter.textContent = `${revealIndex + 1} / ${revealSlides.length}`;
+  revealPrevButton.disabled = revealIndex === 0;
+  revealNextButton.disabled = revealIndex === revealSlides.length - 1;
+}
+
+// Override showActiveWeek to lock content before Sunday
+showActiveWeek = function() {
+  selectedView = { type: "active", id: activeWeekId };
+  wrapTitle.textContent = "Your weekly wrap";
+  notesTitle.textContent = "This week so far";
+
+  const activeNotes = getNotesForWeek(activeWeekId);
+  if (isSundayNow()) {
+    renderNotes();
+  } else {
+    renderNotesLocked();
+  }
+
+  if (!activeNotes.length) {
+    clearSlides();
+    setStatus("Start small.", false);
+    return;
+  }
+
+  if (isSundayNow()) {
+    clearSlides();
+    setStatus("Your week is ready", true);
+    const slides = buildSlides(activeNotes);
+    if (lastGeneratedWeekId !== activeWeekId) {
+      lastGeneratedWeekId = activeWeekId;
+      saveState();
+      setTimeout(() => openReveal(slides, "Your week is ready"), 250);
+    }
+  } else {
+    clearSlides();
+    const n = activeNotes.length;
+    let anticipation = "It starts small.";
+    if (n <= 2) anticipation = "It starts small.";
+    else if (n <= 4) anticipation = "You're building something.";
+    else if (n <= 6) anticipation = "This week has more shape than it feels.";
+    else anticipation = "This is becoming a real week.";
+    setStatus(`${n} moments saved. ${anticipation}`, false);
+  }
+};
+
+// Override showArchive to use full-screen reveal
+showArchive = function(archiveId) {
+  const archive = archives.find((item) => item.id === archiveId);
+  if (!archive) return;
+
+  wrapTitle.textContent = archive.label;
+  notesTitle.textContent = "This week so far";
+  renderNotesLocked();
+  clearSlides();
+  setStatus("Saved week", true);
+  openReveal(archive.slides, archive.label);
+};
+
+// Make test button open the same full-screen reveal
+testRecapButton.replaceWith(testRecapButton.cloneNode(true));
+const freshTestButton = document.getElementById("testRecapButton");
+freshTestButton.addEventListener("click", () => {
+  const slides = buildSlides(getNotesForWeek(activeWeekId));
+  if (!slides.length) return;
+  openReveal(slides, "Test wrap");
+});
+
+// events for reveal
+closeRevealButton.addEventListener("click", closeReveal);
+revealPrevButton.addEventListener("click", () => {
+  if (revealIndex > 0) {
+    revealIndex -= 1;
+    updateRevealUI();
+  }
+});
+revealNextButton.addEventListener("click", () => {
+  if (revealIndex < revealSlides.length - 1) {
+    revealIndex += 1;
+    updateRevealUI();
+  }
+});
+revealTrack.addEventListener("touchstart", (event) => {
+  revealTouchStartX = event.changedTouches[0].screenX;
+});
+revealTrack.addEventListener("touchend", (event) => {
+  revealTouchEndX = event.changedTouches[0].screenX;
+  const delta = revealTouchEndX - revealTouchStartX;
+  if (Math.abs(delta) < 40) return;
+  if (delta < 0 && revealIndex < revealSlides.length - 1) {
+    revealIndex += 1;
+    updateRevealUI();
+  } else if (delta > 0 && revealIndex > 0) {
+    revealIndex -= 1;
+    updateRevealUI();
+  }
+});
+
+// Re-run current view with new behavior
+showActiveWeek();
+updateOpenWrapButton();
