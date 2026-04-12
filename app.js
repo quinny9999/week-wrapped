@@ -2,10 +2,12 @@ const NOTES_KEY = "weekwrap_notes_v7";
 const ARCHIVES_KEY = "weekwrap_archives_v7";
 const ACTIVE_KEY = "weekwrap_active_week_v7";
 const GENERATED_KEY = "weekwrap_generated_week_v7";
+const ACTIVE_START_KEY = "weekwrap_active_week_started_at_v17";
 
 let notes = JSON.parse(localStorage.getItem(NOTES_KEY)) || [];
 let archives = JSON.parse(localStorage.getItem(ARCHIVES_KEY)) || [];
 let activeWeekId = localStorage.getItem(ACTIVE_KEY) || createWeekId();
+let activeWeekStartedAt = localStorage.getItem(ACTIVE_START_KEY) || new Date().toISOString();
 let lastGeneratedWeekId = localStorage.getItem(GENERATED_KEY) || "";
 let selectedView = { type: "active", id: activeWeekId };
 
@@ -121,6 +123,7 @@ function saveState() {
   localStorage.setItem(NOTES_KEY, JSON.stringify(notes));
   localStorage.setItem(ARCHIVES_KEY, JSON.stringify(archives));
   localStorage.setItem(ACTIVE_KEY, activeWeekId);
+  localStorage.setItem(ACTIVE_START_KEY, activeWeekStartedAt);
   localStorage.setItem(GENERATED_KEY, lastGeneratedWeekId);
 }
 
@@ -154,6 +157,21 @@ function getWeekLabelForNotes(weekNotes) {
 
 function isSundayNow() {
   return new Date().getDay() === 0;
+}
+
+function startedToday(dateString) {
+  if (!dateString) return false;
+  const now = new Date();
+  const then = new Date(dateString);
+  return now.getFullYear() === then.getFullYear()
+    && now.getMonth() === then.getMonth()
+    && now.getDate() === then.getDate();
+}
+
+function canOpenActiveWrapNow() {
+  if (!isSundayNow()) return false;
+  if (startedToday(activeWeekStartedAt)) return false;
+  return true;
 }
 
 function renderNotes() {
@@ -613,10 +631,12 @@ function showActiveWeek() {
 
   clearSlides();
 
-  if (isSundayNow()) {
+  if (canOpenActiveWrapNow()) {
     lastGeneratedWeekId = activeWeekId;
     saveState();
     setStatus("Your week is ready", true);
+  } else if (isSundayNow() && startedToday(activeWeekStartedAt)) {
+    setStatus(`${activeNotes.length} ${activeNotes.length === 1 ? "moment" : "moments"} saved. Your new week stays locked for now`, false);
   } else {
     setStatus(`${activeNotes.length} ${activeNotes.length === 1 ? "moment" : "moments"} saved. Waiting for Sunday`, false);
   }
@@ -654,6 +674,7 @@ function startNewWeek() {
   }
 
   activeWeekId = createWeekId();
+  activeWeekStartedAt = new Date().toISOString();
   lastGeneratedWeekId = "";
   selectedView = { type: "active", id: activeWeekId };
 
@@ -663,7 +684,7 @@ function startNewWeek() {
 }
 
 function maybeAutoGenerateSundayRecap() {
-  if (!isSundayNow()) return;
+  if (!canOpenActiveWrapNow()) return;
 
   const activeNotes = getNotesForWeek(activeWeekId);
   if (!activeNotes.length) return;
@@ -684,7 +705,7 @@ function getDisplayedSlides() {
     return archive ? archive.slides : [];
   }
 
-  if (!isSundayNow()) return [];
+  if (!canOpenActiveWrapNow()) return [];
   return buildSlides(getNotesForWeek(activeWeekId));
 }
 
@@ -803,6 +824,7 @@ deleteAllWeeksButton.addEventListener("click", () => {
   archives = [];
   notes = [];
   activeWeekId = createWeekId();
+  activeWeekStartedAt = new Date().toISOString();
   lastGeneratedWeekId = "";
   selectedView = { type: "active", id: activeWeekId };
   saveState();
@@ -844,6 +866,9 @@ slidesTrack.addEventListener("touchend", (event) => {
   }
 });
 
+if (!activeWeekStartedAt) {
+  activeWeekStartedAt = new Date().toISOString();
+}
 saveState();
 setupSpeechRecognition();
 renderWeeksSidebar();
