@@ -2,11 +2,12 @@ const NOTES_KEY = "weekwrap_notes_v7";
 const ARCHIVES_KEY = "weekwrap_archives_v7";
 const ACTIVE_KEY = "weekwrap_active_week_v7";
 const GENERATED_KEY = "weekwrap_generated_week_v7";
-const AI_WRAP_URL = "https://weekwrap-worker.weekwrap.workers.dev/api/generate-wrap";
+const ACTIVE_START_KEY = "weekwrap_active_week_started_at_v17";
 
 let notes = JSON.parse(localStorage.getItem(NOTES_KEY)) || [];
 let archives = JSON.parse(localStorage.getItem(ARCHIVES_KEY)) || [];
 let activeWeekId = localStorage.getItem(ACTIVE_KEY) || createWeekId();
+let activeWeekStartedAt = localStorage.getItem(ACTIVE_START_KEY) || new Date().toISOString();
 let lastGeneratedWeekId = localStorage.getItem(GENERATED_KEY) || "";
 let selectedView = { type: "active", id: activeWeekId };
 
@@ -122,6 +123,7 @@ function saveState() {
   localStorage.setItem(NOTES_KEY, JSON.stringify(notes));
   localStorage.setItem(ARCHIVES_KEY, JSON.stringify(archives));
   localStorage.setItem(ACTIVE_KEY, activeWeekId);
+  localStorage.setItem(ACTIVE_START_KEY, activeWeekStartedAt);
   localStorage.setItem(GENERATED_KEY, lastGeneratedWeekId);
 }
 
@@ -157,96 +159,19 @@ function isSundayNow() {
   return new Date().getDay() === 0;
 }
 
-async function generateAiWrap(notes, weekLabel) {
-  const response = await fetch(AI_WRAP_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      notes,
-      weekLabel
-    })
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to generate AI wrap");
-  }
-
-  return await response.json();
+function startedToday(dateString) {
+  if (!dateString) return false;
+  const now = new Date();
+  const then = new Date(dateString);
+  return now.getFullYear() === then.getFullYear()
+    && now.getMonth() === then.getMonth()
+    && now.getDate() === then.getDate();
 }
 
-function inferCardTheme(card) {
-  const text = ((card.text || "") + " " + (card.type || "")).toLowerCase();
-
-  if (/friend|family|mom|dad|partner|care|showed up for/.test(text)) return "theme-connection";
-  if (/run|gym|walk|rest|sleep|self|effort/.test(text)) return "theme-energy";
-  if (/booked|called|finally|sent|dentist|paperwork|follow-through/.test(text)) return "theme-progress";
-  if (/ready|counted|mattered|adds up|week/.test(text)) return "theme-soft";
-  return "theme-soft";
-}
-
-function convertAiCardsToSlides(cards) {
-  return cards.map((card, index) => {
-    const themeClass = inferCardTheme(card);
-
-    if (card.type === "opening") {
-      return {
-        type: "opening",
-        kicker: "This was your week",
-        title: card.text,
-        detail: "",
-        themeClass
-      };
-    }
-
-    if (card.type === "moment") {
-      return {
-        type: "moment",
-        kicker: index <= 1 ? "A moment" : "Another moment",
-        moment: card.text,
-        detail: "",
-        themeClass
-      };
-    }
-
-    if (card.type === "insight") {
-      return {
-        type: "pattern",
-        kicker: "A thread",
-        headline: card.text,
-        detail: "",
-        themeClass
-      };
-    }
-
-    return {
-      type: "closing",
-      kicker: "What it adds up to",
-      title: card.text,
-      detail: "",
-      themeClass
-    };
-  });
-}
-
-async function generateSlidesForWeek(weekNotes) {
-  if (!weekNotes.length) return [];
-
-  try {
-    const ai = await generateAiWrap(
-      weekNotes.map(n => n.text),
-      getWeekLabelForNotes(weekNotes)
-    );
-
-    if (ai && Array.isArray(ai.cards) && ai.cards.length) {
-      return convertAiCardsToSlides(ai.cards);
-    }
-  } catch (error) {
-    console.error("AI wrap failed, falling back to local wrap:", error);
-  }
-
-  return buildSlides(weekNotes);
+function canOpenActiveWrapNow() {
+  if (!isSundayNow()) return false;
+  if (startedToday(activeWeekStartedAt)) return false;
+  return true;
 }
 
 function renderNotes() {
@@ -514,7 +439,7 @@ function renderSlideContent(slide) {
   switch (slide.type) {
     case "opening":
       return `
-        <div class="slide-inner slide-opening ${slide.themeClass || ""}">
+        <div class="slide-inner slide-opening">
           <div class="slide-kicker">${slide.kicker}</div>
           <div class="slide-main">
             <div class="big-serif">${slide.title}</div>
@@ -525,7 +450,7 @@ function renderSlideContent(slide) {
       `;
     case "count":
       return `
-        <div class="slide-inner slide-count ${slide.themeClass || ""}">
+        <div class="slide-inner slide-count">
           <div class="slide-kicker">${slide.kicker}</div>
           <div class="slide-main">
             <div class="count-number">${slide.count}</div>
@@ -536,7 +461,7 @@ function renderSlideContent(slide) {
       `;
     case "moment":
       return `
-        <div class="slide-inner slide-moment ${slide.themeClass || ""}">
+        <div class="slide-inner slide-moment">
           <div class="slide-kicker">${slide.kicker}</div>
           <div class="slide-main">
             <div class="moment-text">${slide.moment}</div>
@@ -547,7 +472,7 @@ function renderSlideContent(slide) {
       `;
     case "pattern":
       return `
-        <div class="slide-inner slide-pattern ${slide.themeClass || ""}">
+        <div class="slide-inner slide-pattern">
           <div class="slide-kicker">${slide.kicker}</div>
           <div class="slide-main">
             <div class="pattern-text">${slide.headline}</div>
@@ -558,7 +483,7 @@ function renderSlideContent(slide) {
       `;
     case "reframe":
       return `
-        <div class="slide-inner slide-reframe ${slide.themeClass || ""}">
+        <div class="slide-inner slide-reframe">
           <div class="slide-kicker">${slide.kicker}</div>
           <div class="slide-main">
             <div class="big-serif">${slide.title}</div>
@@ -569,7 +494,7 @@ function renderSlideContent(slide) {
       `;
     case "closing":
       return `
-        <div class="slide-inner slide-closing ${slide.themeClass || ""}">
+        <div class="slide-inner slide-closing">
           <div class="slide-kicker">${slide.kicker}</div>
           <div class="slide-main">
             <div class="big-serif">${slide.title}</div>
@@ -706,10 +631,12 @@ function showActiveWeek() {
 
   clearSlides();
 
-  if (isSundayNow()) {
+  if (canOpenActiveWrapNow()) {
     lastGeneratedWeekId = activeWeekId;
     saveState();
     setStatus("Your week is ready", true);
+  } else if (isSundayNow() && startedToday(activeWeekStartedAt)) {
+    setStatus(`${activeNotes.length} ${activeNotes.length === 1 ? "moment" : "moments"} saved. Your new week stays locked for now`, false);
   } else {
     setStatus(`${activeNotes.length} ${activeNotes.length === 1 ? "moment" : "moments"} saved. Waiting for Sunday`, false);
   }
@@ -747,6 +674,7 @@ function startNewWeek() {
   }
 
   activeWeekId = createWeekId();
+  activeWeekStartedAt = new Date().toISOString();
   lastGeneratedWeekId = "";
   selectedView = { type: "active", id: activeWeekId };
 
@@ -756,7 +684,7 @@ function startNewWeek() {
 }
 
 function maybeAutoGenerateSundayRecap() {
-  if (!isSundayNow()) return;
+  if (!canOpenActiveWrapNow()) return;
 
   const activeNotes = getNotesForWeek(activeWeekId);
   if (!activeNotes.length) return;
@@ -777,7 +705,7 @@ function getDisplayedSlides() {
     return archive ? archive.slides : [];
   }
 
-  if (!isSundayNow()) return [];
+  if (!canOpenActiveWrapNow()) return [];
   return buildSlides(getNotesForWeek(activeWeekId));
 }
 
@@ -871,51 +799,18 @@ noteInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter") addNote();
 });
 
-testRecapButton.addEventListener("click", async () => {
-  const weekNotes = getNotesForWeek(activeWeekId);
-  if (!weekNotes.length) return;
-
-  try {
-    setStatus("Generating test wrap...", false);
-    const aiSlides = await generateSlidesForWeek(weekNotes);
-    openReveal(aiSlides, "Test wrap");
-    setStatus("Test wrap", true);
-  } catch (error) {
-    console.error(error);
-    const slides = buildSlides(weekNotes);
-    openReveal(slides, "Test wrap");
-    setStatus("Test wrap", true);
-  }
+testRecapButton.addEventListener("click", () => {
+  const slides = buildSlides(getNotesForWeek(activeWeekId));
+  if (!slides.length) return;
+  renderSlides(slides);
+  setStatus("Test wrap", true);
 });
 
-openWrapButton.addEventListener("click", async () => {
+openWrapButton.addEventListener("click", () => {
   const slides = getDisplayedSlides();
   if (!slides.length) return;
-
-  if (selectedView.type === "archive") {
-    const title = "Saved week";
-    openReveal(slides, title);
-    return;
-  }
-
-  const weekNotes = getNotesForWeek(activeWeekId);
-  if (!weekNotes.length) return;
-
-  try {
-    openWrapButton.disabled = true;
-    openWrapButton.textContent = "Opening...";
-    setStatus("Generating your wrap...", false);
-
-    const aiSlides = await generateSlidesForWeek(weekNotes);
-    openReveal(aiSlides, "Your week is ready");
-    setStatus("Wrap ready", true);
-  } catch (error) {
-    console.error(error);
-    openReveal(slides, "Your week is ready");
-    setStatus("Wrap ready", true);
-  } finally {
-    updateOpenWrapButton();
-  }
+  const title = selectedView.type === "archive" ? "Saved week" : "Your week is ready";
+  openReveal(slides, title);
 });
 downloadWrapButton.addEventListener("click", downloadCurrentWrapPdf);
 startNewWeekButton.addEventListener("click", startNewWeek);
@@ -929,6 +824,7 @@ deleteAllWeeksButton.addEventListener("click", () => {
   archives = [];
   notes = [];
   activeWeekId = createWeekId();
+  activeWeekStartedAt = new Date().toISOString();
   lastGeneratedWeekId = "";
   selectedView = { type: "active", id: activeWeekId };
   saveState();
@@ -970,6 +866,9 @@ slidesTrack.addEventListener("touchend", (event) => {
   }
 });
 
+if (!activeWeekStartedAt) {
+  activeWeekStartedAt = new Date().toISOString();
+}
 saveState();
 setupSpeechRecognition();
 renderWeeksSidebar();
