@@ -15,6 +15,8 @@ const emptyState = document.getElementById("emptyState");
 const noteCount = document.getElementById("noteCount");
 const statusBadge = document.getElementById("statusBadge");
 const addButton = document.getElementById("addButton");
+const dictateButton = document.getElementById("dictateButton");
+const dictateStatus = document.getElementById("dictateStatus");
 const testRecapButton = document.getElementById("testRecapButton");
 const weeksList = document.getElementById("weeksList");
 const weeksEmpty = document.getElementById("weeksEmpty");
@@ -38,6 +40,78 @@ let currentSlides = [];
 let currentSlideIndex = 0;
 let touchStartX = 0;
 let touchEndX = 0;
+let speechRecognition = null;
+let isListening = false;
+
+function setDictateStatus(message) {
+  dictateStatus.textContent = message || "";
+}
+
+function setupSpeechRecognition() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    setDictateStatus("Voice input is not available in this browser.");
+    dictateButton.disabled = true;
+    return;
+  }
+
+  speechRecognition = new SpeechRecognition();
+  speechRecognition.lang = "en-US";
+  speechRecognition.interimResults = false;
+  speechRecognition.maxAlternatives = 1;
+
+  speechRecognition.onstart = () => {
+    isListening = true;
+    dictateButton.classList.add("is-listening");
+    dictateButton.textContent = "Listening...";
+    setDictateStatus("Listening...");
+  };
+
+  speechRecognition.onresult = (event) => {
+    const transcript = event.results?.[0]?.[0]?.transcript?.trim() || "";
+    if (transcript) {
+      noteInput.value = transcript;
+      setDictateStatus("Voice note captured. Press Add, or edit it first.");
+    } else {
+      setDictateStatus("I didn't catch that. Try again.");
+    }
+  };
+
+  speechRecognition.onerror = (event) => {
+    const code = event.error || "";
+    if (code === "not-allowed" || code === "service-not-allowed") {
+      setDictateStatus("Microphone access was blocked.");
+    } else if (code === "no-speech") {
+      setDictateStatus("No speech was detected.");
+    } else {
+      setDictateStatus("Voice input did not work this time.");
+    }
+  };
+
+  speechRecognition.onend = () => {
+    isListening = false;
+    dictateButton.classList.remove("is-listening");
+    dictateButton.textContent = "Dictate";
+  };
+}
+
+function startDictation() {
+  if (!speechRecognition) {
+    setupSpeechRecognition();
+    if (!speechRecognition) return;
+  }
+
+  if (isListening) {
+    speechRecognition.stop();
+    return;
+  }
+
+  try {
+    speechRecognition.start();
+  } catch (error) {
+    setDictateStatus("Voice input is already running.");
+  }
+}
 
 function createWeekId() {
   return "week_" + Date.now();
@@ -289,29 +363,31 @@ function getMomentKicker(index, seed) {
 }
 
 function buildSlides(weekNotes) {
-  const cleanNotes = weekNotes.slice(0, 4);
-  if (!cleanNotes.length) return [];
+  if (!weekNotes.length) return [];
 
-  const seed = getSlideSeed(cleanNotes);
-  const insight = getInsightAndTheme(cleanNotes);
+  const seed = getSlideSeed(weekNotes);
+  const insight = getInsightAndTheme(weekNotes);
   const slides = [];
 
+  // Opening
   slides.push({
     type: "opening",
     kicker: "This was your week",
-    title: getOpeningLine(cleanNotes, seed),
+    title: getOpeningLine(weekNotes, seed),
     detail: ""
   });
 
+  // Count
   slides.push({
     type: "count",
     kicker: "You showed up",
-    count: cleanNotes.length,
-    label: cleanNotes.length === 1 ? "moment captured" : "moments captured",
+    count: weekNotes.length,
+    label: weekNotes.length === 1 ? "moment captured" : "moments captured",
     detail: ""
   });
 
-  cleanNotes.slice(0, Math.min(2, cleanNotes.length)).forEach((note, index) => {
+  // 🔥 ONE SLIDE PER NOTE (MAIN CHANGE)
+  weekNotes.forEach((note, index) => {
     slides.push({
       type: "moment",
       kicker: getMomentKicker(index, seed),
@@ -320,20 +396,17 @@ function buildSlides(weekNotes) {
     });
   });
 
-  slides.push({
-    type: "pattern",
-    kicker: "A thread",
-    headline: insight.headline,
-    detail: ""
-  });
+  // Insight (only if enough notes)
+  if (weekNotes.length >= 3) {
+    slides.push({
+      type: "pattern",
+      kicker: "A thread",
+      headline: insight.headline,
+      detail: ""
+    });
+  }
 
-  slides.push({
-    type: "reframe",
-    kicker: "A thought",
-    title: getReflectionLine(insight.theme, seed),
-    detail: ""
-  });
-
+  // Closing
   slides.push({
     type: "closing",
     kicker: "What it adds up to",
@@ -700,6 +773,7 @@ function downloadCurrentWrapPdf() {
 }
 
 addButton.addEventListener("click", addNote);
+dictateButton.addEventListener("click", startDictation);
 noteInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter") addNote();
 });
@@ -771,6 +845,7 @@ slidesTrack.addEventListener("touchend", (event) => {
 });
 
 saveState();
+setupSpeechRecognition();
 renderWeeksSidebar();
 showActiveWeek();
 maybeAutoGenerateSundayRecap();

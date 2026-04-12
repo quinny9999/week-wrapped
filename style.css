@@ -786,3 +786,27 @@ h2 { margin: 0; font-size: 1.05rem; }
     width: 100%;
   }
 }
+
+
+.dictate-btn {
+  flex-shrink: 0;
+}
+
+.dictate-btn.is-listening {
+  background: rgba(143, 100, 74, 0.14);
+  color: var(--accent-2);
+  border-color: rgba(143, 100, 74, 0.22);
+}
+
+.dictate-status {
+  margin: 8px 2px 0;
+  min-height: 1.2em;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+@media (max-width: 640px) {
+  .dictate-btn {
+    width: 100%;
+  }
+}
