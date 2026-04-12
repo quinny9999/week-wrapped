@@ -16,6 +16,8 @@ const emptyState = document.getElementById("emptyState");
 const noteCount = document.getElementById("noteCount");
 const statusBadge = document.getElementById("statusBadge");
 const addButton = document.getElementById("addButton");
+const dictateButton = document.getElementById("dictateButton");
+const dictateStatus = document.getElementById("dictateStatus");
 const testRecapButton = document.getElementById("testRecapButton");
 const weeksList = document.getElementById("weeksList");
 const weeksEmpty = document.getElementById("weeksEmpty");
@@ -62,6 +64,8 @@ let revealTouchEndX = 0;
 let currentRevealMood = "mood-default";
 let currentWrapTheme = { mood: "warm_progress" };
 let currentWrapMeta = null;
+let recognition = null;
+let isDictating = false;
 
 function createWeekId() {
   return "week_" + Date.now();
@@ -399,8 +403,15 @@ function renderNotes() {
 
   noteCount.textContent = activeNotes.length === 1 ? "1 note" : `${activeNotes.length} notes`;
 
-  if (activeNotes.length === 0) {
+  if (!activeNotes.length) {
     emptyState.style.display = "block";
+    emptyState.textContent = "Nothing yet. Start with one small thing from today.";
+    return;
+  }
+
+  if (selectedView.type === "active" && !isSundayNow()) {
+    emptyState.style.display = "block";
+    emptyState.textContent = "Your notes are safely tucked away until Sunday.";
     return;
   }
 
@@ -779,11 +790,10 @@ function renderWeeksSidebar() {
 async function showActiveWeek() {
   selectedView = { type: "active", id: activeWeekId };
   wrapTitle.textContent = "Your weekly wrap";
-  notesTitle.textContent = "This week so far";
+  notesTitle.textContent = isSundayNow() ? "This week so far" : "Your week is being saved";
   renderNotes();
 
   const activeNotes = getNotesForWeek(activeWeekId);
-
   clearSlides();
 
   if (!activeNotes.length) {
@@ -793,12 +803,7 @@ async function showActiveWeek() {
     return;
   }
 
-  if (isSundayNow()) {
-    setStatus("Ready to generate", true);
-  } else {
-    setStatus("Waiting for Sunday", false);
-  }
-
+  setStatus(isSundayNow() ? "Ready for Sunday wrap" : "Waiting for Sunday", false);
   updateOpenWrapButton();
 }
 
@@ -1057,6 +1062,80 @@ async function copyCurrentCaption() {
   }, 1300);
 }
 
+
+function setDictateStatus(message) {
+  if (dictateStatus) dictateStatus.textContent = message || "";
+}
+
+function stopDictation(resetLabel = true) {
+  isDictating = false;
+  if (recognition) {
+    try { recognition.stop(); } catch (error) {}
+  }
+  if (dictateButton && resetLabel) dictateButton.textContent = "Dictate";
+}
+
+function setupDictation() {
+  if (!dictateButton) return;
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    dictateButton.disabled = true;
+    setDictateStatus("Dictation is not supported in this browser.");
+    return;
+  }
+
+  recognition = new SpeechRecognition();
+  recognition.lang = "en-US";
+  recognition.interimResults = true;
+  recognition.continuous = false;
+
+  recognition.onstart = () => {
+    isDictating = true;
+    dictateButton.textContent = "Stop";
+    setDictateStatus("Listening…");
+  };
+
+  recognition.onresult = (event) => {
+    const transcript = Array.from(event.results).map((result) => result[0]?.transcript || "").join(" ").trim();
+    if (transcript) noteInput.value = transcript;
+    setDictateStatus(transcript ? "Captured speech." : "Listening…");
+  };
+
+  recognition.onerror = (event) => {
+    const label = event?.error === "not-allowed" ? "Microphone permission was denied." : "Dictation could not start.";
+    setDictateStatus(label);
+    isDictating = false;
+    dictateButton.textContent = "Dictate";
+  };
+
+  recognition.onend = () => {
+    isDictating = false;
+    dictateButton.textContent = "Dictate";
+    if (!noteInput.value.trim()) {
+      setDictateStatus("Dictation stopped.");
+    }
+  };
+
+  dictateButton.addEventListener("click", async () => {
+    if (isDictating) {
+      stopDictation();
+      setDictateStatus("Dictation stopped.");
+      return;
+    }
+
+    try {
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach((track) => track.stop());
+      }
+      noteInput.focus();
+      recognition.start();
+    } catch (error) {
+      setDictateStatus("Microphone permission is needed for dictation.");
+    }
+  });
+}
+
 function downloadCurrentWrapPdf() {
   const slides = getDisplayedSlides();
   if (!slides.length || !window.jspdf) return;
@@ -1132,12 +1211,12 @@ noteInput.addEventListener("keydown", (event) => {
 
 testRecapButton.addEventListener("click", async () => {
   const weekNotes = getNotesForWeek(activeWeekId);
-  if (!weekNotes.length) return;
-  setStatus("Generating test wrap...", false);
+  if (!weekNotes.length || !isSundayNow()) return;
+  setStatus("Generating your wrap...", false);
   const slides = await generateSlidesForWeek(weekNotes);
   renderSlides(slides);
-  openReveal(slides, "Test wrap", currentWrapTheme);
-  setStatus("Test wrap", true);
+  openReveal(slides, "Your week is ready", currentWrapTheme);
+  setStatus("Wrap ready", true);
   updateOpenWrapButton();
 });
 
@@ -1251,6 +1330,7 @@ revealTrack.addEventListener("touchend", (event) => {
 });
 
 applyRevealMood({ mood: "warm_progress" });
+setupDictation();
 saveState();
 renderWeeksSidebar();
 showActiveWeek();
