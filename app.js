@@ -1,3 +1,18 @@
+const firebaseConfig = {
+  apiKey: "AIzaSyCbfJ9Tcmc0DWxUWXAaEedfmC8lAlK-wCU",
+  authDomain: "weekwrap-login.firebaseapp.com",
+  projectId: "weekwrap-login",
+  appId: "1:942946588679:web:d7a8f4fe35b8954f3b72a2"
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+
+const loginEmailInput = document.getElementById("loginEmail");
+const loginButton = document.getElementById("loginButton");
+const logoutButton = document.getElementById("logoutButton");
+const loginStatus = document.getElementById("loginStatus");
+
 const NOTES_KEY = "weekwrap_notes_v7";
 const ARCHIVES_KEY = "weekwrap_archives_v7";
 const ACTIVE_KEY = "weekwrap_active_week_v7";
@@ -1261,7 +1276,74 @@ deleteAllWeeksButton.addEventListener("click", async () => {
   await showActiveWeek();
   updateOpenWrapButton();
 });
+const ACTION_URL_KEY = "weekwrap_email_link_pending";
 
+async function sendLoginLink() {
+  const email = (loginEmailInput?.value || "").trim();
+
+  if (!email) {
+    loginStatus.textContent = "Enter your email first.";
+    return;
+  }
+
+  const actionCodeSettings = {
+    url: "https://quinny9999.github.io/week-wrapped/",
+    handleCodeInApp: true
+  };
+
+  try {
+    await auth.sendSignInLinkToEmail(email, actionCodeSettings);
+    window.localStorage.setItem("emailForSignIn", email);
+    loginStatus.textContent = "Check your email for the login link.";
+  } catch (err) {
+    console.error(err);
+    loginStatus.textContent = err.message || "Could not send login link.";
+  }
+}
+
+async function finishEmailLinkLoginIfNeeded() {
+  if (!auth.isSignInWithEmailLink(window.location.href)) return;
+
+  let email = window.localStorage.getItem("emailForSignIn");
+  if (!email) {
+    email = window.prompt("Enter your email to finish sign-in");
+  }
+  if (!email) return;
+
+  try {
+    await auth.signInWithEmailLink(email, window.location.href);
+    window.localStorage.removeItem("emailForSignIn");
+    loginStatus.textContent = "You are signed in.";
+    window.history.replaceState({}, document.title, window.location.pathname);
+  } catch (err) {
+    console.error(err);
+    loginStatus.textContent = err.message || "Could not complete sign-in.";
+  }
+}
+
+function watchAuthState() {
+  auth.onAuthStateChanged((user) => {
+    if (user) {
+      loginStatus.textContent = `Signed in as ${user.email}`;
+      loginButton?.classList.add("hidden");
+      logoutButton?.classList.remove("hidden");
+    } else {
+      loginStatus.textContent = "Not signed in.";
+      loginButton?.classList.remove("hidden");
+      logoutButton?.classList.add("hidden");
+    }
+  });
+}
+
+async function logoutUser() {
+  await auth.signOut();
+  loginStatus.textContent = "Signed out.";
+}
+
+loginButton?.addEventListener("click", sendLoginLink);
+logoutButton?.addEventListener("click", logoutUser);
+finishEmailLinkLoginIfNeeded();
+watchAuthState();
 prevSlideButton.addEventListener("click", () => {
   if (currentSlideIndex > 0) {
     currentSlideIndex -= 1;
