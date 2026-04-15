@@ -1026,25 +1026,7 @@ body.mood-calm .slide-inner {
   text-transform: uppercase;
   color: var(--muted);
 }
-.login-row {
-  display: flex;
-  gap: 10px;
-  margin-top: 16px;
-  flex-wrap: wrap;
-}
 
-#loginEmail {
-  min-width: 260px;
-  padding: 12px 14px;
-  border-radius: 14px;
-  border: 1px solid rgba(255,255,255,0.2);
-  background: rgba(255,255,255,0.08);
-  color: inherit;
-}
-
-.hidden {
-  display: none !important;
-}
 .wrap-actions-share .ghost-btn,
 .share-btn {
   background: rgba(255,255,255,0.5);
@@ -1071,4 +1053,43 @@ body.mood-reflective .wrap-stat-label {
   .wrap-stats {
     grid-template-columns: 1fr;
   }
+}
+
+
+.login-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 16px;
+}
+
+#loginEmail {
+  min-width: 260px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(124, 97, 77, 0.18);
+  background: rgba(255,255,255,0.58);
+  color: var(--text);
+  font: inherit;
+}
+
+.login-status {
+  margin-top: 10px;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.logged-out .composer,
+.logged-out .notes,
+.logged-out .wrap-panel {
+  opacity: 0.82;
+}
+
+button:disabled,
+input:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }

@@ -32,17 +32,18 @@
 
       <section class="main-column">
         <header class="hero glass-panel">
-          <div class="login-row">
-            <input id="loginEmail" type="email" placeholder="you@example.com" />
-            <button id="loginButton" class="primary-btn" type="button">Email me a login link</button>
-            <button id="logoutButton" class="ghost-btn hidden" type="button">Log out</button>
-          </div>
-          <p id="loginStatus" class="helper-text"></p>
           <div class="hero-chip">Sunday feelings, saved all week</div>
           <h1>WeekWrap</h1>
           <p class="tagline">
             Capture little moments now. Your weekly wrap appears as a story you can swipe through.
           </p>
+          <div class="login-row">
+            <input id="loginEmail" type="email" placeholder="you@example.com" />
+            <button id="loginButton" class="primary-btn" type="button">Email me a login link</button>
+            <button id="logoutButton" class="ghost-btn hidden" type="button">Log out</button>
+          </div>
+          <p id="loginStatus" class="helper-text login-status">Not signed in.</p>
+
         </header>
 
         <section class="composer glass-panel">
@@ -153,6 +154,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="firebase-config.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
