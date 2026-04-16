@@ -37,12 +37,19 @@
           <p class="tagline">
             Capture little moments now. Your weekly wrap appears as a story you can swipe through.
           </p>
-          <div class="login-row">
-            <input id="loginEmail" type="email" placeholder="you@example.com" />
-            <button id="loginButton" class="primary-btn" type="button">Email me a login link</button>
-            <button id="logoutButton" class="ghost-btn hidden" type="button">Log out</button>
+
+          <div class="login-panel">
+            <div class="login-row">
+              <input id="loginEmail" type="email" placeholder="Email" autocomplete="email" />
+              <input id="loginPassword" type="password" placeholder="Password" autocomplete="current-password" />
+            </div>
+            <div class="login-actions">
+              <button id="signUpButton" class="ghost-btn" type="button">Sign up</button>
+              <button id="signInButton" class="primary-btn" type="button">Log in</button>
+              <button id="logoutButton" class="ghost-btn hidden" type="button">Log out</button>
+            </div>
+            <div id="loginStatus" class="login-status">Not signed in.</div>
           </div>
-          <p id="loginStatus" class="helper-text login-status">Not signed in.</p>
 
         </header>
 

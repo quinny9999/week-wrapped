@@ -1,3 +1,120 @@
+
+const loginEmailInput = document.getElementById("loginEmail");
+const loginPasswordInput = document.getElementById("loginPassword");
+const signUpButton = document.getElementById("signUpButton");
+const signInButton = document.getElementById("signInButton");
+const logoutButton = document.getElementById("logoutButton");
+const loginStatus = document.getElementById("loginStatus");
+
+let firebaseAuth = null;
+let signedInUser = null;
+
+function setLoginStatus(message, isError = false) {
+  if (!loginStatus) return;
+  loginStatus.textContent = message;
+  loginStatus.classList.toggle("error", !!isError);
+}
+
+function updateAuthUI(user) {
+  signedInUser = user || null;
+  if (signedInUser) {
+    setLoginStatus(`Signed in as ${signedInUser.email}`);
+    signUpButton?.classList.add("hidden");
+    signInButton?.classList.add("hidden");
+    logoutButton?.classList.remove("hidden");
+  } else {
+    setLoginStatus("Not signed in.");
+    signUpButton?.classList.remove("hidden");
+    signInButton?.classList.remove("hidden");
+    logoutButton?.classList.add("hidden");
+  }
+}
+
+function getLoginCredentials() {
+  const email = (loginEmailInput?.value || "").trim();
+  const password = loginPasswordInput?.value || "";
+  if (!email) {
+    setLoginStatus("Enter your email first.", true);
+    return null;
+  }
+  if (!password || password.length < 6) {
+    setLoginStatus("Password must be at least 6 characters.", true);
+    return null;
+  }
+  return { email, password };
+}
+
+async function signUpWithPassword() {
+  if (!firebaseAuth) {
+    setLoginStatus("Firebase is not configured yet.", true);
+    return;
+  }
+  const creds = getLoginCredentials();
+  if (!creds) return;
+  setLoginStatus("Creating account...");
+  try {
+    await firebaseAuth.createUserWithEmailAndPassword(creds.email, creds.password);
+    setLoginStatus(`Account created. Signed in as ${creds.email}.`);
+  } catch (err) {
+    console.error(err);
+    const msg = err?.code === "auth/email-already-in-use"
+      ? "That email already has an account. Try Log in."
+      : (err?.message || "Could not create account.");
+    setLoginStatus(msg, true);
+  }
+}
+
+async function signInWithPassword() {
+  if (!firebaseAuth) {
+    setLoginStatus("Firebase is not configured yet.", true);
+    return;
+  }
+  const creds = getLoginCredentials();
+  if (!creds) return;
+  setLoginStatus("Signing in...");
+  try {
+    await firebaseAuth.signInWithEmailAndPassword(creds.email, creds.password);
+    setLoginStatus(`Signed in as ${creds.email}.`);
+  } catch (err) {
+    console.error(err);
+    const msg = err?.code === "auth/wrong-password" || err?.code === "auth/invalid-credential"
+      ? "Wrong email or password."
+      : err?.code === "auth/user-not-found"
+      ? "No account found for that email. Try Sign up."
+      : (err?.message || "Could not sign in.");
+    setLoginStatus(msg, true);
+  }
+}
+
+async function logoutFirebaseUser() {
+  if (!firebaseAuth) return;
+  try {
+    await firebaseAuth.signOut();
+    setLoginStatus("Signed out.");
+  } catch (err) {
+    console.error(err);
+    setLoginStatus(err?.message || "Could not sign out.", true);
+  }
+}
+
+function initFirebaseAuth() {
+  if (!window.firebase || !window.WEEKWRAP_FIREBASE_CONFIG) {
+    setLoginStatus("Firebase config missing. Add your config file.", true);
+    return;
+  }
+  if (!firebase.apps.length) {
+    firebase.initializeApp(window.WEEKWRAP_FIREBASE_CONFIG);
+  }
+  firebaseAuth = firebase.auth();
+  firebaseAuth.onAuthStateChanged((user) => {
+    updateAuthUI(user);
+  });
+  signUpButton?.addEventListener("click", signUpWithPassword);
+  signInButton?.addEventListener("click", signInWithPassword);
+  logoutButton?.addEventListener("click", logoutFirebaseUser);
+}
+
+
 const NOTES_KEY = "weekwrap_notes_v7";
 const ARCHIVES_KEY = "weekwrap_archives_v7";
 const ACTIVE_KEY = "weekwrap_active_week_v7";
@@ -35,14 +152,6 @@ const wrapStats = document.getElementById("wrapStats");
 const shareImageButton = document.getElementById("shareImageButton");
 const downloadImageButton = document.getElementById("downloadImageButton");
 const copyCaptionButton = document.getElementById("copyCaptionButton");
-
-const loginEmailInput = document.getElementById("loginEmail");
-const loginButton = document.getElementById("loginButton");
-const logoutButton = document.getElementById("logoutButton");
-const loginStatus = document.getElementById("loginStatus");
-
-let firebaseAuth = null;
-let currentUser = null;
 
 const slidesEmpty = document.getElementById("slidesEmpty");
 const slidesArea = document.getElementById("slidesArea");
@@ -411,12 +520,6 @@ function renderNotes() {
 
   noteCount.textContent = activeNotes.length === 1 ? "1 note" : `${activeNotes.length} notes`;
 
-  if (!isSignedIn()) {
-    emptyState.style.display = "block";
-    emptyState.textContent = "Sign in to unlock your notes and weekly wrap.";
-    return;
-  }
-
   if (!activeNotes.length) {
     emptyState.style.display = "block";
     emptyState.textContent = "Nothing yet. Start with one small thing from today.";
@@ -452,129 +555,7 @@ function renderNotes() {
     });
 }
 
-
-function authReady() {
-  return !!firebaseAuth;
-}
-
-function isSignedIn() {
-  return !!currentUser;
-}
-
-function setLoginMessage(message) {
-  if (loginStatus) loginStatus.textContent = message;
-}
-
-function applyAuthUI() {
-  const locked = !isSignedIn();
-
-  if (loginButton) loginButton.classList.toggle("hidden", !locked);
-  if (logoutButton) logoutButton.classList.toggle("hidden", locked);
-  if (loginEmailInput) loginEmailInput.classList.toggle("hidden", !locked);
-
-  if (locked) {
-    setLoginMessage("Sign in to add notes and generate your wrap.");
-  } else {
-    setLoginMessage(`Signed in as ${currentUser.email}`);
-  }
-
-  if (noteInput) noteInput.disabled = locked;
-  if (addButton) addButton.disabled = locked;
-  if (dictateButton) dictateButton.disabled = locked;
-  if (testRecapButton) testRecapButton.disabled = locked || !isSundayNow();
-  if (openWrapButton && selectedView.type !== "archive") {
-    openWrapButton.disabled = locked || !isSundayNow() || !getNotesForWeek(activeWeekId).length;
-  }
-
-  document.body.classList.toggle("logged-out", locked);
-  renderNotes();
-}
-
-function requireSignIn() {
-  if (isSignedIn()) return true;
-  setLoginMessage("Sign in first.");
-  if (loginEmailInput) loginEmailInput.focus();
-  return false;
-}
-
-async function sendLoginLink() {
-  if (!authReady()) {
-    setLoginMessage("Firebase config is missing.");
-    return;
-  }
-
-  const email = (loginEmailInput?.value || "").trim();
-  if (!email) {
-    setLoginMessage("Enter your email first.");
-    return;
-  }
-
-  try {
-    setLoginMessage("Sending link...");
-    const actionCodeSettings = {
-      url: "https://quinny9999.github.io/week-wrapped/",
-      handleCodeInApp: true
-    };
-    await firebaseAuth.sendSignInLinkToEmail(email, actionCodeSettings);
-    window.localStorage.setItem("emailForSignIn", email);
-    setLoginMessage("Check your email. It may land in spam.");
-  } catch (err) {
-    console.error(err);
-    setLoginMessage(err?.message || "Could not send login link.");
-  }
-}
-
-async function finishEmailLinkLoginIfNeeded() {
-  if (!authReady()) return;
-  if (!firebaseAuth.isSignInWithEmailLink(window.location.href)) return;
-
-  let email = window.localStorage.getItem("emailForSignIn");
-  if (!email) {
-    email = window.prompt("Enter your email to finish sign-in");
-  }
-  if (!email) return;
-
-  try {
-    await firebaseAuth.signInWithEmailLink(email, window.location.href);
-    window.localStorage.removeItem("emailForSignIn");
-    window.history.replaceState({}, document.title, window.location.pathname);
-    setLoginMessage("You are signed in.");
-  } catch (err) {
-    console.error(err);
-    setLoginMessage(err?.message || "Could not complete sign-in.");
-  }
-}
-
-async function logoutUser() {
-  if (!authReady()) return;
-  await firebaseAuth.signOut();
-}
-
-function initFirebaseLogin() {
-  if (!window.firebase || !window.WEEKWRAP_FIREBASE_CONFIG) {
-    setLoginMessage("Add your Firebase config in firebase-config.js");
-    return;
-  }
-
-  if (!firebase.apps.length) {
-    firebase.initializeApp(window.WEEKWRAP_FIREBASE_CONFIG);
-  }
-
-  firebaseAuth = firebase.auth();
-
-  loginButton?.addEventListener("click", sendLoginLink);
-  logoutButton?.addEventListener("click", logoutUser);
-
-  firebaseAuth.onAuthStateChanged((user) => {
-    currentUser = user || null;
-    applyAuthUI();
-  });
-
-  finishEmailLinkLoginIfNeeded();
-}
-
 function addNote() {
-  if (!requireSignIn()) return;
   const text = noteInput.value.trim();
   if (!text) return;
 
@@ -1346,7 +1327,6 @@ noteInput.addEventListener("keydown", (event) => {
 });
 
 testRecapButton.addEventListener("click", async () => {
-  if (!requireSignIn()) return;
   const weekNotes = getNotesForWeek(activeWeekId);
   if (!weekNotes.length || !isSundayNow()) return;
   setStatus("Generating your wrap...", false);
@@ -1358,7 +1338,6 @@ testRecapButton.addEventListener("click", async () => {
 });
 
 openWrapButton.addEventListener("click", async () => {
-  if (!requireSignIn() && selectedView.type !== "archive") return;
   if (selectedView.type === "archive") {
     const slides = getDisplayedSlides();
     if (!slides.length) return;
@@ -1473,4 +1452,7 @@ saveState();
 renderWeeksSidebar();
 showActiveWeek();
 maybeAutoGenerateSundayRecap();
-initFirebaseLogin();
+
+
+
+initFirebaseAuth();
