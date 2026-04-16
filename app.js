@@ -7,7 +7,10 @@ const logoutButton = document.getElementById("logoutButton");
 const loginStatus = document.getElementById("loginStatus");
 
 let firebaseAuth = null;
+let firestoreDb = null;
 let signedInUser = null;
+let isSyncingCloud = false;
+let cloudSaveTimer = null;
 
 function setLoginStatus(message, isError = false) {
   if (!loginStatus) return;
@@ -106,8 +109,19 @@ function initFirebaseAuth() {
     firebase.initializeApp(window.WEEKWRAP_FIREBASE_CONFIG);
   }
   firebaseAuth = firebase.auth();
-  firebaseAuth.onAuthStateChanged((user) => {
+  firestoreDb = firebase.firestore();
+  firebaseAuth.onAuthStateChanged(async (user) => {
     updateAuthUI(user);
+    if (user) {
+      await loadCloudStateForUser(user);
+    } else {
+      signedInUser = null;
+      setLoginStatus("Not signed in. Your notes stay on this device until you log in.", false);
+      saveLocalStateOnly();
+      renderWeeksSidebar();
+      await showActiveWeek();
+      updateOpenWrapButton();
+    }
   });
   signUpButton?.addEventListener("click", signUpWithPassword);
   signInButton?.addEventListener("click", signInWithPassword);
@@ -188,11 +202,77 @@ function createWeekId() {
   return "week_" + Date.now();
 }
 
-function saveState() {
+function saveLocalStateOnly() {
   localStorage.setItem(NOTES_KEY, JSON.stringify(notes));
   localStorage.setItem(ARCHIVES_KEY, JSON.stringify(archives));
   localStorage.setItem(ACTIVE_KEY, activeWeekId);
   localStorage.setItem(GENERATED_KEY, lastGeneratedWeekId);
+}
+
+function queueCloudSave() {
+  if (!signedInUser || !firestoreDb || isSyncingCloud) return;
+  if (cloudSaveTimer) clearTimeout(cloudSaveTimer);
+  cloudSaveTimer = setTimeout(() => {
+    saveCloudStateNow().catch((err) => {
+      console.error(err);
+      setLoginStatus("Signed in, but cloud save failed.", true);
+    });
+  }, 500);
+}
+
+function saveState() {
+  saveLocalStateOnly();
+  queueCloudSave();
+}
+
+
+
+function buildCloudState() {
+  return {
+    notes,
+    archives,
+    activeWeekId,
+    lastGeneratedWeekId,
+    updatedAt: new Date().toISOString()
+  };
+}
+
+async function saveCloudStateNow() {
+  if (!signedInUser || !firestoreDb || isSyncingCloud) return;
+  await firestoreDb.collection("weekwrapUsers").doc(signedInUser.uid).set(buildCloudState(), { merge: true });
+}
+
+async function loadCloudStateForUser(user) {
+  if (!firestoreDb) return;
+  isSyncingCloud = true;
+  setLoginStatus(`Signed in as ${user.email}. Loading your saved data...`);
+
+  try {
+    const ref = firestoreDb.collection("weekwrapUsers").doc(user.uid);
+    const snap = await ref.get();
+
+    if (snap.exists) {
+      const data = snap.data() || {};
+      notes = Array.isArray(data.notes) ? data.notes : [];
+      archives = Array.isArray(data.archives) ? data.archives : [];
+      activeWeekId = typeof data.activeWeekId === "string" && data.activeWeekId ? data.activeWeekId : createWeekId();
+      lastGeneratedWeekId = typeof data.lastGeneratedWeekId === "string" ? data.lastGeneratedWeekId : "";
+      selectedView = { type: "active", id: activeWeekId };
+    } else {
+      await ref.set(buildCloudState(), { merge: true });
+    }
+
+    saveLocalStateOnly();
+    renderWeeksSidebar();
+    await showActiveWeek();
+    updateOpenWrapButton();
+    setLoginStatus(`Signed in as ${user.email}. Synced.`);
+  } catch (err) {
+    console.error(err);
+    setLoginStatus("Signed in, but cloud sync failed.", true);
+  } finally {
+    isSyncingCloud = false;
+  }
 }
 
 function getNotesForWeek(weekId) {
