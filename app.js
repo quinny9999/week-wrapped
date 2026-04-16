@@ -1328,7 +1328,7 @@ noteInput.addEventListener("keydown", (event) => {
 
 testRecapButton.addEventListener("click", async () => {
   const weekNotes = getNotesForWeek(activeWeekId);
-  if (!weekNotes.length || !isSundayNow()) return;
+  if (!weekNotes.length) return;
   setStatus("Generating your wrap...", false);
   const slides = await generateSlidesForWeek(weekNotes);
   renderSlides(slides);
