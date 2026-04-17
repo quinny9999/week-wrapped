@@ -5,12 +5,15 @@ const signUpButton = document.getElementById("signUpButton");
 const signInButton = document.getElementById("signInButton");
 const logoutButton = document.getElementById("logoutButton");
 const loginStatus = document.getElementById("loginStatus");
+const openTutorialButton = document.getElementById("openTutorialButton");
+const loadDemoButton = document.getElementById("loadDemoButton");
+const tutorialOverlay = document.getElementById("tutorialOverlay");
+const closeTutorialButton = document.getElementById("closeTutorialButton");
+const tutorialDemoButton = document.getElementById("tutorialDemoButton");
+const tutorialExitButton = document.getElementById("tutorialExitButton");
 
 let firebaseAuth = null;
-let firestoreDb = null;
 let signedInUser = null;
-let isSyncingCloud = false;
-let cloudSaveTimer = null;
 
 function setLoginStatus(message, isError = false) {
   if (!loginStatus) return;
@@ -109,19 +112,8 @@ function initFirebaseAuth() {
     firebase.initializeApp(window.WEEKWRAP_FIREBASE_CONFIG);
   }
   firebaseAuth = firebase.auth();
-  firestoreDb = firebase.firestore();
-  firebaseAuth.onAuthStateChanged(async (user) => {
+  firebaseAuth.onAuthStateChanged((user) => {
     updateAuthUI(user);
-    if (user) {
-      await loadCloudStateForUser(user);
-    } else {
-      signedInUser = null;
-      setLoginStatus("Not signed in. Your notes stay on this device until you log in.", false);
-      saveLocalStateOnly();
-      renderWeeksSidebar();
-      await showActiveWeek();
-      updateOpenWrapButton();
-    }
   });
   signUpButton?.addEventListener("click", signUpWithPassword);
   signInButton?.addEventListener("click", signInWithPassword);
@@ -133,6 +125,7 @@ const NOTES_KEY = "weekwrap_notes_v7";
 const ARCHIVES_KEY = "weekwrap_archives_v7";
 const ACTIVE_KEY = "weekwrap_active_week_v7";
 const GENERATED_KEY = "weekwrap_generated_week_v7";
+const DEMO_USED_KEY = "weekwrap_demo_used_v1";
 const AI_WRAP_URL = "https://weekwrap-worker.weekwrap.workers.dev/api/generate-wrap";
 
 let notes = JSON.parse(localStorage.getItem(NOTES_KEY)) || [];
@@ -202,77 +195,84 @@ function createWeekId() {
   return "week_" + Date.now();
 }
 
-function saveLocalStateOnly() {
+function saveState() {
   localStorage.setItem(NOTES_KEY, JSON.stringify(notes));
   localStorage.setItem(ARCHIVES_KEY, JSON.stringify(archives));
   localStorage.setItem(ACTIVE_KEY, activeWeekId);
   localStorage.setItem(GENERATED_KEY, lastGeneratedWeekId);
 }
 
-function queueCloudSave() {
-  if (!signedInUser || !firestoreDb || isSyncingCloud) return;
-  if (cloudSaveTimer) clearTimeout(cloudSaveTimer);
-  cloudSaveTimer = setTimeout(() => {
-    saveCloudStateNow().catch((err) => {
-      console.error(err);
-      setLoginStatus("Signed in, but cloud save failed.", true);
-    });
-  }, 500);
-}
-
-function saveState() {
-  saveLocalStateOnly();
-  queueCloudSave();
+function updateDemoButtonVisibility() {
+  const used = localStorage.getItem(DEMO_USED_KEY) === "1";
+  loadDemoButton?.classList.toggle("hidden", used);
+  tutorialDemoButton?.classList.toggle("hidden", used);
 }
 
 
+const DEMO_NOTES = [
+  "Grabbed coffee with a friend and laughed way longer than expected.",
+  "Finished a task I had been putting off all month.",
+  "Went for a long walk and cleared my head.",
+  "Cooked something decent instead of defaulting to snacks.",
+  "Had one of those quiet evenings that actually felt good."
+];
 
-function buildCloudState() {
-  return {
-    notes,
-    archives,
-    activeWeekId,
-    lastGeneratedWeekId,
-    updatedAt: new Date().toISOString()
-  };
+function openTutorial() {
+  if (!tutorialOverlay) return;
+  tutorialOverlay.classList.remove("hidden");
+  tutorialOverlay.setAttribute("aria-hidden", "false");
 }
 
-async function saveCloudStateNow() {
-  if (!signedInUser || !firestoreDb || isSyncingCloud) return;
-  await firestoreDb.collection("weekwrapUsers").doc(signedInUser.uid).set(buildCloudState(), { merge: true });
+function closeTutorial() {
+  if (!tutorialOverlay) return;
+  tutorialOverlay.classList.add("hidden");
+  tutorialOverlay.setAttribute("aria-hidden", "true");
 }
 
-async function loadCloudStateForUser(user) {
-  if (!firestoreDb) return;
-  isSyncingCloud = true;
-  setLoginStatus(`Signed in as ${user.email}. Loading your saved data...`);
+async function loadDemoWeek() {
+  const alreadyUsed = localStorage.getItem(DEMO_USED_KEY) === "1";
+  if (alreadyUsed) return;
 
-  try {
-    const ref = firestoreDb.collection("weekwrapUsers").doc(user.uid);
-    const snap = await ref.get();
-
-    if (snap.exists) {
-      const data = snap.data() || {};
-      notes = Array.isArray(data.notes) ? data.notes : [];
-      archives = Array.isArray(data.archives) ? data.archives : [];
-      activeWeekId = typeof data.activeWeekId === "string" && data.activeWeekId ? data.activeWeekId : createWeekId();
-      lastGeneratedWeekId = typeof data.lastGeneratedWeekId === "string" ? data.lastGeneratedWeekId : "";
-      selectedView = { type: "active", id: activeWeekId };
-    } else {
-      await ref.set(buildCloudState(), { merge: true });
-    }
-
-    saveLocalStateOnly();
-    renderWeeksSidebar();
-    await showActiveWeek();
-    updateOpenWrapButton();
-    setLoginStatus(`Signed in as ${user.email}. Synced.`);
-  } catch (err) {
-    console.error(err);
-    setLoginStatus("Signed in, but cloud sync failed.", true);
-  } finally {
-    isSyncingCloud = false;
+  const existingNotes = getNotesForWeek(activeWeekId);
+  if (existingNotes.length) {
+    const shouldReplace = window.confirm("Load the demo week and replace the notes in your current week?");
+    if (!shouldReplace) return;
+    notes = notes.filter((note) => note.weekId !== activeWeekId);
   }
+
+  const now = new Date();
+  const demoDates = [5, 4, 3, 2, 1].map((daysAgo) => {
+    const d = new Date(now);
+    d.setDate(now.getDate() - daysAgo);
+    d.setHours(18, 0, 0, 0);
+    return d.toISOString();
+  });
+
+  DEMO_NOTES.forEach((text, index) => {
+    notes.push({
+      id: `demo_${Date.now()}_${index}`,
+      weekId: activeWeekId,
+      text,
+      createdAt: demoDates[index] || new Date().toISOString()
+    });
+  });
+
+  saveState();
+  renderNotes();
+  await showActiveWeek();
+  closeTutorial();
+
+  setStatus("Generating your demo wrap...", false);
+  const weekNotes = getNotesForWeek(activeWeekId);
+  const slides = await generateSlidesForWeek(weekNotes);
+  renderSlides(slides);
+
+  localStorage.setItem(DEMO_USED_KEY, "1");
+  updateDemoButtonVisibility();
+
+  openReveal(slides, "Your demo week is ready", currentWrapTheme);
+  setStatus("Demo wrap ready", true);
+  updateOpenWrapButton();
 }
 
 function getNotesForWeek(weekId) {
@@ -1526,11 +1526,23 @@ revealTrack.addEventListener("touchend", (event) => {
   }
 });
 
+openTutorialButton?.addEventListener("click", openTutorial);
+loadDemoButton?.addEventListener("click", loadDemoWeek);
+closeTutorialButton?.addEventListener("click", closeTutorial);
+tutorialExitButton?.addEventListener("click", closeTutorial);
+tutorialDemoButton?.addEventListener("click", loadDemoWeek);
+tutorialOverlay?.addEventListener("click", (event) => {
+  if (event.target === tutorialOverlay || event.target.classList.contains("tutorial-backdrop")) {
+    closeTutorial();
+  }
+});
+
 applyRevealMood({ mood: "warm_progress" });
 setupDictation();
 saveState();
 renderWeeksSidebar();
 showActiveWeek();
+updateDemoButtonVisibility();
 maybeAutoGenerateSundayRecap();
 
 

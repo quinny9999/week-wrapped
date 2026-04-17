@@ -35,8 +35,15 @@
           <div class="hero-chip">Sunday feelings, saved all week</div>
           <h1>WeekWrap</h1>
           <p class="tagline">
-            Capture little moments now. Your weekly wrap appears as a story you can swipe through.
+            A Spotify Wrapped for your week.
           </p>
+          <p class="hero-explainer">
+            Save a few real moments during the week, then turn them into a personal AI recap you can swipe through, revisit, and share.
+          </p>
+          <div class="hero-quick-actions">
+            <button id="openTutorialButton" class="ghost-btn" type="button">How it works</button>
+            <button id="loadDemoButton" class="primary-btn" type="button">Try demo week</button>
+          </div>
 
           <div class="login-panel">
             <div class="login-row">
@@ -134,6 +141,54 @@
   </div>
 
 
+
+  <div id="tutorialOverlay" class="tutorial-overlay hidden" aria-hidden="true">
+    <div class="tutorial-backdrop"></div>
+    <div class="tutorial-panel glass-panel">
+      <div class="tutorial-topbar">
+        <div>
+          <div class="hero-chip">Quick tour</div>
+          <h2>How WeekWrap works</h2>
+        </div>
+        <button id="closeTutorialButton" class="ghost-btn" type="button">Close</button>
+      </div>
+      <div class="tutorial-grid">
+        <div class="tutorial-step">
+          <div class="tutorial-step-number">1</div>
+          <div>
+            <h3>Add moments during the week</h3>
+            <p>Keep it messy and real. One short sentence like “Got coffee with a friend” is enough.</p>
+          </div>
+        </div>
+        <div class="tutorial-step">
+          <div class="tutorial-step-number">2</div>
+          <div>
+            <h3>Preview it anytime</h3>
+            <p>Use <strong>Test wrap</strong> whenever you want to see how your week turns into a recap.</p>
+          </div>
+        </div>
+        <div class="tutorial-step">
+          <div class="tutorial-step-number">3</div>
+          <div>
+            <h3>Open the real wrap on Sunday</h3>
+            <p>On Sunday, your saved week becomes your actual recap.</p>
+          </div>
+        </div>
+      </div>
+      <div class="tutorial-demo-box">
+        <div>
+          <h3>Want to see it right now?</h3>
+          <p>Load a fake sample week so you can try the full experience in seconds.</p>
+        </div>
+        <div class="tutorial-actions">
+          <button id="tutorialDemoButton" class="primary-btn" type="button">Load demo week</button>
+          <button id="tutorialExitButton" class="ghost-btn" type="button">Exit tutorial</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
   <div id="revealOverlay" class="reveal-overlay hidden" aria-hidden="true">
     <div class="reveal-backdrop"></div>
     <div class="reveal-panel">
@@ -161,7 +216,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="firebase-config.js"></script>
   <script src="app.js"></script>
 </body>

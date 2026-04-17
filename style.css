@@ -1100,3 +1100,127 @@ body.mood-reflective .wrap-stat-label {
 .hidden {
   display: none !important;
 }
+
+
+.hero-explainer {
+  margin: 10px 0 0;
+  font-size: 1rem;
+  line-height: 1.6;
+  opacity: 0.9;
+  max-width: 720px;
+}
+
+.hero-quick-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+
+.tutorial-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.tutorial-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(7, 10, 24, 0.6);
+  backdrop-filter: blur(8px);
+}
+
+.tutorial-panel {
+  position: relative;
+  z-index: 1;
+  width: min(760px, 100%);
+  padding: 28px;
+  border-radius: 28px;
+}
+
+.tutorial-topbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.tutorial-topbar h2 {
+  margin: 10px 0 0;
+}
+
+.tutorial-grid {
+  display: grid;
+  gap: 14px;
+  margin-top: 22px;
+}
+
+.tutorial-step {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  gap: 14px;
+  align-items: start;
+  padding: 16px;
+  border-radius: 20px;
+  background: rgba(255,255,255,0.06);
+}
+
+.tutorial-step h3,
+.tutorial-demo-box h3 {
+  margin: 0 0 6px;
+}
+
+.tutorial-step p,
+.tutorial-demo-box p {
+  margin: 0;
+  opacity: 0.85;
+  line-height: 1.55;
+}
+
+.tutorial-step-number {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  background: rgba(255,255,255,0.12);
+}
+
+.tutorial-demo-box {
+  margin-top: 18px;
+  padding: 18px;
+  border-radius: 22px;
+  background: rgba(255,255,255,0.08);
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+}
+
+.tutorial-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 760px) {
+  .tutorial-demo-box {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .tutorial-actions {
+    width: 100%;
+  }
+
+  .tutorial-actions .primary-btn,
+  .tutorial-actions .ghost-btn,
+  .hero-quick-actions .primary-btn,
+  .hero-quick-actions .ghost-btn {
+    width: 100%;
+  }
+}
