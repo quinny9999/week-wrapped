@@ -1827,3 +1827,18 @@ body.drawer-open {
     order: 1;
   }
 }
+
+.hero-logo-clean{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  margin:6px 0 0;
+  padding:0;
+}
+.hero-logo-img{
+  width:min(340px,70vw);
+  height:auto;
+  display:block;
+  object-fit:contain;
+  margin:0;
+}

@@ -1157,196 +1157,94 @@ function wrapTextLines(doc, text, x, y, maxWidth, lineHeight) {
   return y + (lines.length * lineHeight);
 }
 
-
 function buildShareCanvasData() {
   const meta = getDisplayedMeta();
   const slides = getDisplayedSlides();
   if (!meta || !slides.length) return null;
   const palette = getThemePalette(meta.theme);
-  const moments = slides
-    .filter((s) => s && s.moment)
-    .slice(0, 3)
-    .map((s) => String(s.moment || "").trim())
-    .filter(Boolean);
-
+  const summaryBits = (meta.stats || []).slice(0, 4).map((s) => `${s.label}: ${s.value}`);
   return {
     meta,
     slides,
     palette,
     title: getDisplayedLabel(),
-    moments
+    bullets: summaryBits
   };
-}
-
-function splitCanvasLines(ctx, text, maxWidth) {
-  const parts = String(text || "").split("\n");
-  const lines = [];
-  parts.forEach((part) => {
-    const words = part.split(/\s+/).filter(Boolean);
-    if (!words.length) {
-      lines.push("");
-      return;
-    }
-    let line = "";
-    words.forEach((word) => {
-      const test = line ? `${line} ${word}` : word;
-      if (ctx.measureText(test).width > maxWidth && line) {
-        lines.push(line);
-        line = word;
-      } else {
-        line = test;
-      }
-    });
-    if (line) lines.push(line);
-  });
-  return lines;
-}
-
-function drawCanvasLines(ctx, text, x, y, maxWidth, lineHeight, maxLines = Infinity) {
-  const lines = splitCanvasLines(ctx, text, maxWidth);
-  const clipped = lines.slice(0, maxLines);
-  if (lines.length > maxLines && clipped.length) {
-    let last = clipped[clipped.length - 1];
-    while (last.length && ctx.measureText(`${last}…`).width > maxWidth) {
-      last = last.slice(0, -1);
-    }
-    clipped[clipped.length - 1] = `${last}…`;
-  }
-  clipped.forEach((line, i) => ctx.fillText(line, x, y + (i * lineHeight)));
-  return y + (clipped.length * lineHeight);
-}
-
-function fitCanvasFontSize(ctx, text, maxWidth, startSize, minSize, weight, family, maxLines) {
-  let size = startSize;
-  while (size > minSize) {
-    ctx.font = `${weight} ${size}px ${family}`;
-    if (splitCanvasLines(ctx, text, maxWidth).length <= maxLines) return size;
-    size -= 2;
-  }
-  return minSize;
-}
-
-function drawGlassPanel(ctx, x, y, w, h, radius, fillA = 0.18, strokeA = 0.18) {
-  ctx.fillStyle = `rgba(255,255,255,${fillA})`;
-  roundRect(ctx, x, y, w, h, radius, true, false);
-  ctx.strokeStyle = `rgba(255,255,255,${strokeA})`;
-  ctx.lineWidth = 1.2;
-  roundRect(ctx, x, y, w, h, radius, false, true);
-}
-
-function sanitizeShareFileName(text) {
-  return String(text || "weekwrap")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "") || "weekwrap";
 }
 
 function renderShareCanvas() {
   const data = buildShareCanvasData();
   if (!data) return null;
-
   const canvas = document.createElement("canvas");
   const width = 1080;
   const height = 1350;
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext("2d");
-
   const gradient = ctx.createLinearGradient(0, 0, width, height);
   gradient.addColorStop(0, `rgb(${data.palette.bg.join(",")})`);
   gradient.addColorStop(1, `rgb(${data.palette.bg2.join(",")})`);
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, width, height);
 
-  ctx.fillStyle = "rgba(255,255,255,0.10)";
+  ctx.fillStyle = "rgba(255,255,255,0.18)";
   ctx.beginPath();
-  ctx.arc(950, 150, 180, 0, Math.PI * 2);
+  ctx.arc(930, 160, 180, 0, Math.PI * 2);
   ctx.fill();
   ctx.beginPath();
-  ctx.arc(160, 1180, 220, 0, Math.PI * 2);
+  ctx.arc(180, 1180, 220, 0, Math.PI * 2);
   ctx.fill();
-
-  const cardX = 52;
-  const cardY = 52;
-  const cardW = 976;
-  const cardH = 1246;
-
-  const shellGradient = ctx.createLinearGradient(cardX, cardY, cardX + cardW, cardY + cardH);
-  shellGradient.addColorStop(0, "rgba(255,255,255,0.18)");
-  shellGradient.addColorStop(1, "rgba(255,255,255,0.10)");
-  ctx.fillStyle = shellGradient;
-  roundRect(ctx, cardX, cardY, cardW, cardH, 38, true, false);
-  ctx.strokeStyle = "rgba(255,255,255,0.18)";
-  ctx.lineWidth = 1.5;
-  roundRect(ctx, cardX, cardY, cardW, cardH, 38, false, true);
 
   ctx.fillStyle = `rgb(${data.palette.chipBg.join(",")})`;
-  roundRect(ctx, 88, 86, 220, 52, 24, true, false);
+  roundRect(ctx, 72, 72, 240, 56, 28, true, false);
   ctx.fillStyle = `rgb(${data.palette.chipText.join(",")})`;
-  ctx.font = "700 24px Inter, sans-serif";
-  ctx.fillText("WeekWrap", 126, 120);
-
-  ctx.fillStyle = `rgb(${data.palette.muted.join(",")})`;
-  ctx.font = "700 24px Inter, sans-serif";
-  ctx.fillText(data.title, 88, 178);
-
-  const headlineWidth = 860;
-  const headlineSize = fitCanvasFontSize(ctx, data.meta.headline, headlineWidth, 78, 48, 800, "Inter, sans-serif", 3);
-  ctx.fillStyle = `rgb(${data.palette.text.join(",")})`;
-  ctx.font = `800 ${headlineSize}px Inter, sans-serif`;
-  let currentY = drawCanvasLines(ctx, data.meta.headline, 88, 258, headlineWidth, Math.round(headlineSize * 1.08), 3);
-
-  currentY += 18;
-  const insightSize = fitCanvasFontSize(ctx, data.meta.insight, 840, 32, 22, 500, "Inter, sans-serif", 3);
-  ctx.fillStyle = `rgb(${data.palette.muted.join(",")})`;
-  ctx.font = `500 ${insightSize}px Inter, sans-serif`;
-  currentY = drawCanvasLines(ctx, data.meta.insight, 88, currentY, 840, Math.round(insightSize * 1.45), 3);
-
-  const statsY = currentY + 28;
-  drawGlassPanel(ctx, 88, statsY, 904, 252, 30, 0.16, 0.16);
+  ctx.font = "700 28px Inter, sans-serif";
+  ctx.fillText("WeekWrap", 112, 109);
 
   ctx.fillStyle = `rgb(${data.palette.text.join(",")})`;
-  ctx.font = "700 24px Inter, sans-serif";
-  ctx.fillText(getShareMoodLabel(data.meta.theme), 120, statsY + 42);
+  ctx.font = "800 42px Inter, sans-serif";
+  ctx.fillText(data.title, 72, 190);
 
-  const stats = (data.meta.stats || []).slice(0, 4);
-  stats.forEach((stat, index) => {
+  ctx.font = "700 76px Inter, sans-serif";
+  wrapCanvasText(ctx, data.meta.headline, 72, 300, 880, 88);
+
+  ctx.font = "500 34px Inter, sans-serif";
+  ctx.fillStyle = `rgb(${data.palette.muted.join(",")})`;
+  const insightY = wrapCanvasText(ctx, data.meta.insight, 72, 520, 860, 46);
+
+  ctx.fillStyle = "rgba(255,255,255,0.22)";
+  roundRect(ctx, 72, insightY + 26, 936, 320, 36, true, false);
+
+  ctx.fillStyle = `rgb(${data.palette.text.join(",")})`;
+  ctx.font = "700 30px Inter, sans-serif";
+  ctx.fillText(getShareMoodLabel(data.meta.theme), 112, insightY + 88);
+
+  const stats = data.meta.stats || [];
+  stats.slice(0, 4).forEach((stat, index) => {
     const col = index % 2;
     const row = Math.floor(index / 2);
-    const x = 120 + (col * 424);
-    const y = statsY + 86 + (row * 84);
-
+    const x = 112 + col * 420;
+    const y = insightY + 146 + row * 94;
     ctx.fillStyle = `rgb(${data.palette.muted.join(",")})`;
-    ctx.font = "700 18px Inter, sans-serif";
-    drawCanvasLines(ctx, String(stat.label || "").toUpperCase(), x, y, 300, 22, 2);
-
-    const value = String(stat.value || "");
-    const valueSize = fitCanvasFontSize(ctx, value, 300, 34, 22, 800, "Inter, sans-serif", 2);
+    ctx.font = "600 24px Inter, sans-serif";
+    ctx.fillText(stat.label.toUpperCase(), x, y);
     ctx.fillStyle = `rgb(${data.palette.text.join(",")})`;
-    ctx.font = `800 ${valueSize}px Inter, sans-serif`;
-    drawCanvasLines(ctx, value, x, y + 32, 300, Math.round(valueSize * 1.08), 2);
+    ctx.font = "800 38px Inter, sans-serif";
+    ctx.fillText(String(stat.value), x, y + 42);
   });
 
-  const momentsY = statsY + 284;
-  drawGlassPanel(ctx, 88, momentsY, 904, 278, 30, 0.16, 0.16);
+  ctx.fillStyle = "rgba(255,255,255,0.22)";
+  roundRect(ctx, 72, 980, 936, 220, 36, true, false);
+  ctx.fillStyle = `rgb(${data.palette.text.join(",")})`;
+  ctx.font = "700 26px Inter, sans-serif";
+  ctx.fillText("A few moments from the week", 112, 1038);
+  ctx.font = "500 28px Inter, sans-serif";
+  const moments = data.slides.filter((s) => s.moment).slice(0, 3).map((s) => `• ${s.moment}`);
+  wrapCanvasText(ctx, moments.join("\n"), 112, 1094, 840, 42);
 
   ctx.fillStyle = `rgb(${data.palette.text.join(",")})`;
-  ctx.font = "700 24px Inter, sans-serif";
-  ctx.fillText("A few moments from the week", 120, momentsY + 42);
-
-  const moments = data.moments.length ? data.moments : ["A few small moments added up into something worth remembering."];
-  let momentY = momentsY + 92;
-  ctx.fillStyle = `rgb(${data.palette.muted.join(",")})`;
-  ctx.font = "500 24px Inter, sans-serif";
-  moments.slice(0, 3).forEach((moment) => {
-    momentY = drawCanvasLines(ctx, `• ${moment}`, 120, momentY, 820, 32, 2) + 14;
-  });
-
-  const footerY = cardY + cardH - 34;
-  ctx.fillStyle = `rgb(${data.palette.text.join(",")})`;
-  ctx.font = "600 20px Inter, sans-serif";
-  ctx.fillText("Made with WeekWrap", 88, footerY);
-
+  ctx.font = "600 24px Inter, sans-serif";
+  ctx.fillText("Made with WeekWrap", 72, 1288);
   return canvas;
 }
 
@@ -1364,73 +1262,63 @@ function roundRect(ctx, x, y, width, height, radius, fill, stroke) {
 }
 
 function wrapCanvasText(ctx, text, x, y, maxWidth, lineHeight) {
-  return drawCanvasLines(ctx, text, x, y, maxWidth, lineHeight);
+  const paragraphs = String(text || "").split("\n");
+  let currentY = y;
+  paragraphs.forEach((paragraph) => {
+    const words = paragraph.split(/\s+/);
+    let line = "";
+    words.forEach((word) => {
+      const test = line ? `${line} ${word}` : word;
+      if (ctx.measureText(test).width > maxWidth && line) {
+        ctx.fillText(line, x, currentY);
+        currentY += lineHeight;
+        line = word;
+      } else {
+        line = test;
+      }
+    });
+    if (line) {
+      ctx.fillText(line, x, currentY);
+      currentY += lineHeight;
+    }
+  });
+  return currentY;
 }
 
 async function shareCurrentWrapImage() {
   const canvas = renderShareCanvas();
   if (!canvas) return;
   const meta = getDisplayedMeta();
-  const fileName = `weekwrap-${sanitizeShareFileName(getDisplayedLabel())}.png`;
+  const fileName = `weekwrap-${getDisplayedLabel().replace(/\s+/g, "-").toLowerCase()}.png`;
   const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
   if (!blob) return;
 
-  const originalText = shareImageButton ? shareImageButton.textContent : "";
-  if (shareImageButton) {
-    shareImageButton.disabled = true;
-    shareImageButton.textContent = "Preparing...";
+  const file = new File([blob], fileName, { type: "image/png" });
+  if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+    await navigator.share({
+      title: getDisplayedLabel(),
+      text: meta?.shareCaption || getDisplayedLabel(),
+      files: [file]
+    });
+    return;
   }
 
-  try {
-    const file = new File([blob], fileName, { type: "image/png" });
-    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-      await navigator.share({
-        title: getDisplayedLabel(),
-        text: meta?.shareCaption || getDisplayedLabel(),
-        files: [file]
-      });
-      return;
-    }
-
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = fileName;
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  } finally {
-    if (shareImageButton) {
-      shareImageButton.disabled = false;
-      shareImageButton.textContent = originalText || "Share image";
-    }
-  }
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 async function downloadCurrentWrapImage() {
   const canvas = renderShareCanvas();
   if (!canvas) return;
-
-  const originalText = downloadImageButton ? downloadImageButton.textContent : "";
-  if (downloadImageButton) {
-    downloadImageButton.disabled = true;
-    downloadImageButton.textContent = "Preparing...";
-  }
-
-  try {
-    const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
-    if (!blob) return;
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `weekwrap-${sanitizeShareFileName(getDisplayedLabel())}.png`;
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  } finally {
-    if (downloadImageButton) {
-      downloadImageButton.disabled = false;
-      downloadImageButton.textContent = originalText || "Download image";
-    }
-  }
+  const url = canvas.toDataURL("image/png");
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `weekwrap-${getDisplayedLabel().replace(/\s+/g, "-").toLowerCase()}.png`;
+  link.click();
 }
 
 async function copyCurrentCaption() {
@@ -1442,6 +1330,7 @@ async function copyCurrentCaption() {
     copyCaptionButton.textContent = "Copy caption";
   }, 1300);
 }
+
 
 function setDictateStatus(message) {
   if (dictateStatus) dictateStatus.textContent = message || "";
