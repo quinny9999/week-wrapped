@@ -11,6 +11,21 @@ const tutorialOverlay = document.getElementById("tutorialOverlay");
 const closeTutorialButton = document.getElementById("closeTutorialButton");
 const tutorialDemoButton = document.getElementById("tutorialDemoButton");
 const tutorialExitButton = document.getElementById("tutorialExitButton");
+const openSignInModalButton = document.getElementById("openSignInModalButton");
+const openSignUpModalButton = document.getElementById("openSignUpModalButton");
+const authModal = document.getElementById("authModal");
+const authModalBackdrop = document.getElementById("authModalBackdrop");
+const closeAuthModalButton = document.getElementById("closeAuthModalButton");
+const authModalTitle = document.getElementById("authModalTitle");
+const authModalSubtitle = document.getElementById("authModalSubtitle");
+const togglePasswordButton = document.getElementById("togglePasswordButton");
+const authStatePill = document.getElementById("authStatePill");
+const heroLoginStatus = document.getElementById("heroLoginStatus");
+const menuToggleButton = document.getElementById("menuToggleButton");
+const closeMenuButton = document.getElementById("closeMenuButton");
+const historyDrawer = document.getElementById("historyDrawer");
+const drawerScrim = document.getElementById("drawerScrim");
+
 
 let firebaseAuth = null;
 let signedInUser = null;
@@ -25,13 +40,18 @@ function updateAuthUI(user) {
   signedInUser = user || null;
   if (signedInUser) {
     setLoginStatus(`Signed in as ${signedInUser.email}`);
-    signUpButton?.classList.add("hidden");
-    signInButton?.classList.add("hidden");
+    if (authStatePill) authStatePill.textContent = signedInUser.email;
+    if (heroLoginStatus) heroLoginStatus.textContent = "Account active. Your saved weeks travel with you.";
+    openSignInModalButton?.classList.add("hidden");
+    openSignUpModalButton?.classList.add("hidden");
     logoutButton?.classList.remove("hidden");
+    closeAuthModal();
   } else {
     setLoginStatus("Not signed in.");
-    signUpButton?.classList.remove("hidden");
-    signInButton?.classList.remove("hidden");
+    if (authStatePill) authStatePill.textContent = "Not signed in";
+    if (heroLoginStatus) heroLoginStatus.textContent = "Log in to keep your weeks saved across devices.";
+    openSignInModalButton?.classList.remove("hidden");
+    openSignUpModalButton?.classList.remove("hidden");
     logoutButton?.classList.add("hidden");
   }
 }
@@ -103,6 +123,37 @@ async function logoutFirebaseUser() {
   }
 }
 
+
+function openAuthModal(mode = "signin") {
+  if (!authModal) return;
+  const isSignUp = mode === "signup";
+  authModal.dataset.mode = isSignUp ? "signup" : "signin";
+  if (authModalTitle) authModalTitle.textContent = isSignUp ? "Create your account" : "Log in";
+  if (authModalSubtitle) authModalSubtitle.textContent = isSignUp
+    ? "Create an account so your weeks stay saved and synced."
+    : "Sign in to open your saved weeks and keep building your archive.";
+  if (signInButton) signInButton.textContent = isSignUp ? "Create account" : "Log in";
+  if (signUpButton) signUpButton.textContent = isSignUp ? "I already have an account" : "Create account";
+  authModal.classList.remove("hidden");
+  authModal.setAttribute("aria-hidden", "false");
+  document.body.classList.add("modal-open");
+}
+
+function closeAuthModal() {
+  if (!authModal) return;
+  authModal.classList.add("hidden");
+  authModal.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("modal-open");
+}
+
+function toggleDrawer(forceOpen = null) {
+  if (!historyDrawer || !drawerScrim) return;
+  const willOpen = forceOpen === null ? !historyDrawer.classList.contains("open") : !!forceOpen;
+  historyDrawer.classList.toggle("open", willOpen);
+  drawerScrim.classList.toggle("hidden", !willOpen);
+  document.body.classList.toggle("drawer-open", willOpen);
+}
+
 function initFirebaseAuth() {
   if (!window.firebase || !window.WEEKWRAP_FIREBASE_CONFIG) {
     setLoginStatus("Firebase config missing. Add your config file.", true);
@@ -115,9 +166,31 @@ function initFirebaseAuth() {
   firebaseAuth.onAuthStateChanged((user) => {
     updateAuthUI(user);
   });
-  signUpButton?.addEventListener("click", signUpWithPassword);
-  signInButton?.addEventListener("click", signInWithPassword);
+  signInButton?.addEventListener("click", async () => {
+    if (authModal?.dataset.mode === "signup") {
+      await signUpWithPassword();
+    } else {
+      await signInWithPassword();
+    }
+  });
+  signUpButton?.addEventListener("click", async () => {
+    if (authModal?.dataset.mode === "signup") {
+      openAuthModal("signin");
+    } else {
+      openAuthModal("signup");
+    }
+  });
   logoutButton?.addEventListener("click", logoutFirebaseUser);
+  openSignInModalButton?.addEventListener("click", () => openAuthModal("signin"));
+  openSignUpModalButton?.addEventListener("click", () => openAuthModal("signup"));
+  closeAuthModalButton?.addEventListener("click", closeAuthModal);
+  authModalBackdrop?.addEventListener("click", closeAuthModal);
+  togglePasswordButton?.addEventListener("click", () => {
+    if (!loginPasswordInput) return;
+    const isHidden = loginPasswordInput.type === "password";
+    loginPasswordInput.type = isHidden ? "text" : "password";
+    togglePasswordButton.textContent = isHidden ? "Hide" : "Show";
+  });
 }
 
 
@@ -1065,7 +1138,6 @@ function getDisplayedSlides() {
     return archive ? archive.slides : [];
   }
 
-  if (!isSundayNow()) return [];
   return currentSlides.length ? currentSlides : [];
 }
 
@@ -1548,3 +1620,24 @@ maybeAutoGenerateSundayRecap();
 
 
 initFirebaseAuth();
+
+
+menuToggleButton?.addEventListener("click", () => toggleDrawer(true));
+drawerScrim?.addEventListener("click", () => toggleDrawer(false));
+historyDrawer?.addEventListener("click", (event) => {
+  event.stopPropagation();
+});
+menuToggleButton?.addEventListener("click", (event) => {
+  event.stopPropagation();
+});
+closeMenuButton?.addEventListener("click", (event) => {
+  event.stopPropagation();
+  toggleDrawer(false);
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    closeAuthModal();
+    toggleDrawer(false);
+  }
+});

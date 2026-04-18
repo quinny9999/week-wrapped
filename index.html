@@ -11,14 +11,13 @@
 </head>
 <body>
   <div class="app-shell">
-    <div class="bg-orb orb-1"></div>
+<div class="bg-orb orb-1"></div>
     <div class="bg-orb orb-2"></div>
     <div class="bg-orb orb-3"></div>
 
     <main class="app-layout">
-      <aside class="history-panel glass-panel">
-        <div class="history-head">
-          <div>
+      <aside id="historyDrawer" class="history-panel glass-panel">
+        <div class="history-head"><div>
             <div class="history-kicker">Saved weeks</div>
             <h2>Previous wraps</h2>
           </div>
@@ -31,34 +30,38 @@
       </aside>
 
       <section class="main-column">
-        <header class="hero glass-panel">
-          <div class="hero-chip">Sunday feelings, saved all week</div>
-          <h1>WeekWrap</h1>
-          <p class="tagline">
-            A Spotify Wrapped for your week.
-          </p>
-          <p class="hero-explainer">
-            Save a few real moments during the week, then turn them into a personal AI recap you can swipe through, revisit, and share.
-          </p>
-          <div class="hero-quick-actions">
-            <button id="openTutorialButton" class="ghost-btn" type="button">How it works</button>
-            <button id="loadDemoButton" class="primary-btn" type="button">Try demo week</button>
-          </div>
+        
+<header class="hero glass-panel">
+  <div class="hero-grid">
+    <div class="hero-main">
+      <div class="hero-chip">Capture the week. Open it on Sunday.</div>
+      <div class="logo-placeholder">
+        <div class="logo-placeholder-box">LOGO IMAGE</div>
+        <div class="logo-placeholder-note">Swap this for your real logo later</div>
+      </div>
+      <h1>WeekWrap</h1>
+      <p class="tagline">A futuristic weekly recap for your real life.</p>
+      <p class="hero-explainer">
+        Drop in the moments that mattered, then turn them into a swipeable AI wrap you can revisit, save, and share.
+      </p>
+      <div class="hero-quick-actions">
+        <button id="openTutorialButton" class="ghost-btn" type="button">How it works</button>
+        <button id="loadDemoButton" class="primary-btn" type="button">Try demo week</button>
+      </div>
+    </div>
 
-          <div class="login-panel">
-            <div class="login-row">
-              <input id="loginEmail" type="email" placeholder="Email" autocomplete="email" />
-              <input id="loginPassword" type="password" placeholder="Password" autocomplete="current-password" />
-            </div>
-            <div class="login-actions">
-              <button id="signUpButton" class="ghost-btn" type="button">Sign up</button>
-              <button id="signInButton" class="primary-btn" type="button">Log in</button>
-              <button id="logoutButton" class="ghost-btn hidden" type="button">Log out</button>
-            </div>
-            <div id="loginStatus" class="login-status">Not signed in.</div>
-          </div>
-
-        </header>
+    <div class="hero-auth-card">
+      <div class="auth-mini-label">Account</div>
+      <div id="authStatePill" class="auth-state-pill">Not signed in</div>
+      <div class="hero-auth-actions">
+        <button id="openSignInModalButton" class="primary-btn auth-cta-btn" type="button">Log in</button>
+        <button id="openSignUpModalButton" class="ghost-btn auth-cta-btn" type="button">Sign up</button>
+        <button id="logoutButton" class="ghost-btn auth-cta-btn hidden" type="button">Log out</button>
+      </div>
+      <div id="heroLoginStatus" class="hero-login-status">Your weeks stay saved when you log in.</div>
+    </div>
+  </div>
+</header>
 
         <section class="composer glass-panel">
           <label for="noteInput" class="input-label">What happened?</label>
@@ -140,6 +143,35 @@
     <button id="testRecapButton" class="test-button" type="button">Test wrap</button>
   </div>
 
+
+
+  
+  <div id="authModal" class="auth-modal hidden" aria-hidden="true">
+    <div id="authModalBackdrop" class="auth-modal-backdrop"></div>
+    <div class="auth-modal-panel glass-panel">
+      <button id="closeAuthModalButton" class="drawer-close modal-close" type="button" aria-label="Close">×</button>
+      <div class="auth-modal-topline">WeekWrap account</div>
+      <h2 id="authModalTitle">Log in</h2>
+      <p id="authModalSubtitle" class="auth-modal-subtitle">Save your weeks and pick up where you left off.</p>
+
+      <div class="auth-form-grid">
+        <label class="auth-label" for="loginEmail">Email</label>
+        <input id="loginEmail" class="auth-input" type="email" placeholder="you@example.com" autocomplete="email" />
+
+        <label class="auth-label" for="loginPassword">Password</label>
+        <div class="password-shell">
+          <input id="loginPassword" class="auth-input" type="password" placeholder="At least 6 characters" autocomplete="current-password" />
+          <button id="togglePasswordButton" class="toggle-password-btn" type="button">Show</button>
+        </div>
+
+        <div class="auth-form-actions">
+          <button id="signInButton" class="primary-btn" type="button">Log in</button>
+          <button id="signUpButton" class="ghost-btn" type="button">Create account</button>
+        </div>
+        <div id="loginStatus" class="login-status">Not signed in.</div>
+      </div>
+    </div>
+  </div>
 
 
   <div id="tutorialOverlay" class="tutorial-overlay hidden" aria-hidden="true">
