@@ -1164,7 +1164,7 @@ function buildShareCanvasData() {
   if (!meta || !slides.length) return null;
   const palette = getThemePalette(meta.theme);
   const moments = slides
-    .filter((s) => s.moment)
+    .filter((s) => s && s.moment)
     .slice(0, 3)
     .map((s) => String(s.moment || "").trim())
     .filter(Boolean);
@@ -1179,10 +1179,10 @@ function buildShareCanvasData() {
 }
 
 function splitCanvasLines(ctx, text, maxWidth) {
-  const paragraphs = String(text || "").split("\n");
+  const parts = String(text || "").split("\n");
   const lines = [];
-  paragraphs.forEach((paragraph) => {
-    const words = paragraph.split(/\s+/).filter(Boolean);
+  parts.forEach((part) => {
+    const words = part.split(/\s+/).filter(Boolean);
     if (!words.length) {
       lines.push("");
       return;
@@ -1202,31 +1202,36 @@ function splitCanvasLines(ctx, text, maxWidth) {
   return lines;
 }
 
-function drawWrappedCanvasText(ctx, text, x, y, maxWidth, lineHeight, maxLines = Infinity) {
+function drawCanvasLines(ctx, text, x, y, maxWidth, lineHeight, maxLines = Infinity) {
   const lines = splitCanvasLines(ctx, text, maxWidth);
-  const trimmed = lines.slice(0, maxLines);
-  if (lines.length > maxLines && trimmed.length) {
-    let last = trimmed[trimmed.length - 1];
+  const clipped = lines.slice(0, maxLines);
+  if (lines.length > maxLines && clipped.length) {
+    let last = clipped[clipped.length - 1];
     while (last.length && ctx.measureText(`${last}…`).width > maxWidth) {
       last = last.slice(0, -1);
     }
-    trimmed[trimmed.length - 1] = `${last}…`;
+    clipped[clipped.length - 1] = `${last}…`;
   }
-  trimmed.forEach((line, index) => {
-    ctx.fillText(line, x, y + (index * lineHeight));
-  });
-  return y + (trimmed.length * lineHeight);
+  clipped.forEach((line, i) => ctx.fillText(line, x, y + (i * lineHeight)));
+  return y + (clipped.length * lineHeight);
 }
 
-function fitCanvasFont(ctx, text, maxWidth, startSize, minSize, weight = 700, family = "Inter, sans-serif", maxLines = 3) {
+function fitCanvasFontSize(ctx, text, maxWidth, startSize, minSize, weight, family, maxLines) {
   let size = startSize;
   while (size > minSize) {
     ctx.font = `${weight} ${size}px ${family}`;
-    const lines = splitCanvasLines(ctx, text, maxWidth);
-    if (lines.length <= maxLines) return size;
+    if (splitCanvasLines(ctx, text, maxWidth).length <= maxLines) return size;
     size -= 2;
   }
   return minSize;
+}
+
+function drawGlassPanel(ctx, x, y, w, h, radius, fillA = 0.18, strokeA = 0.18) {
+  ctx.fillStyle = `rgba(255,255,255,${fillA})`;
+  roundRect(ctx, x, y, w, h, radius, true, false);
+  ctx.strokeStyle = `rgba(255,255,255,${strokeA})`;
+  ctx.lineWidth = 1.2;
+  roundRect(ctx, x, y, w, h, radius, false, true);
 }
 
 function sanitizeShareFileName(text) {
@@ -1255,94 +1260,92 @@ function renderShareCanvas() {
 
   ctx.fillStyle = "rgba(255,255,255,0.10)";
   ctx.beginPath();
-  ctx.arc(930, 160, 170, 0, Math.PI * 2);
+  ctx.arc(950, 150, 180, 0, Math.PI * 2);
   ctx.fill();
   ctx.beginPath();
-  ctx.arc(180, 1180, 200, 0, Math.PI * 2);
+  ctx.arc(160, 1180, 220, 0, Math.PI * 2);
   ctx.fill();
 
-  const outerX = 60;
-  const outerY = 60;
-  const outerW = 960;
-  const outerH = 1230;
+  const cardX = 52;
+  const cardY = 52;
+  const cardW = 976;
+  const cardH = 1246;
 
-  ctx.fillStyle = "rgba(8,12,24,0.16)";
-  roundRect(ctx, outerX, outerY, outerW, outerH, 42, true, false);
+  const shellGradient = ctx.createLinearGradient(cardX, cardY, cardX + cardW, cardY + cardH);
+  shellGradient.addColorStop(0, "rgba(255,255,255,0.18)");
+  shellGradient.addColorStop(1, "rgba(255,255,255,0.10)");
+  ctx.fillStyle = shellGradient;
+  roundRect(ctx, cardX, cardY, cardW, cardH, 38, true, false);
+  ctx.strokeStyle = "rgba(255,255,255,0.18)";
+  ctx.lineWidth = 1.5;
+  roundRect(ctx, cardX, cardY, cardW, cardH, 38, false, true);
 
   ctx.fillStyle = `rgb(${data.palette.chipBg.join(",")})`;
-  roundRect(ctx, outerX + 28, outerY + 26, 240, 54, 27, true, false);
+  roundRect(ctx, 88, 86, 220, 52, 24, true, false);
   ctx.fillStyle = `rgb(${data.palette.chipText.join(",")})`;
-  ctx.font = "700 26px Inter, sans-serif";
-  ctx.fillText("WeekWrap", outerX + 68, outerY + 61);
+  ctx.font = "700 24px Inter, sans-serif";
+  ctx.fillText("WeekWrap", 126, 120);
 
   ctx.fillStyle = `rgb(${data.palette.muted.join(",")})`;
-  ctx.font = "700 26px Inter, sans-serif";
-  ctx.fillText(data.title, outerX + 30, outerY + 122);
+  ctx.font = "700 24px Inter, sans-serif";
+  ctx.fillText(data.title, 88, 178);
 
-  const headlineMaxWidth = outerW - 60;
-  const headlineSize = fitCanvasFont(ctx, data.meta.headline, headlineMaxWidth, 76, 48, 800, "Inter, sans-serif", 3);
+  const headlineWidth = 860;
+  const headlineSize = fitCanvasFontSize(ctx, data.meta.headline, headlineWidth, 78, 48, 800, "Inter, sans-serif", 3);
   ctx.fillStyle = `rgb(${data.palette.text.join(",")})`;
   ctx.font = `800 ${headlineSize}px Inter, sans-serif`;
-  let currentY = drawWrappedCanvasText(ctx, data.meta.headline, outerX + 30, outerY + 190, headlineMaxWidth, Math.round(headlineSize * 1.08), 3);
+  let currentY = drawCanvasLines(ctx, data.meta.headline, 88, 258, headlineWidth, Math.round(headlineSize * 1.08), 3);
 
-  currentY += 24;
-  const insightSize = fitCanvasFont(ctx, data.meta.insight, outerW - 60, 34, 24, 500, "Inter, sans-serif", 4);
+  currentY += 18;
+  const insightSize = fitCanvasFontSize(ctx, data.meta.insight, 840, 32, 22, 500, "Inter, sans-serif", 3);
   ctx.fillStyle = `rgb(${data.palette.muted.join(",")})`;
   ctx.font = `500 ${insightSize}px Inter, sans-serif`;
-  currentY = drawWrappedCanvasText(ctx, data.meta.insight, outerX + 30, currentY, outerW - 60, Math.round(insightSize * 1.35), 4);
+  currentY = drawCanvasLines(ctx, data.meta.insight, 88, currentY, 840, Math.round(insightSize * 1.45), 3);
 
-  currentY += 28;
-
-  const statsCardY = currentY;
-  const statsCardH = 240;
-  ctx.fillStyle = "rgba(255,255,255,0.16)";
-  roundRect(ctx, outerX + 24, statsCardY, outerW - 48, statsCardH, 30, true, false);
+  const statsY = currentY + 28;
+  drawGlassPanel(ctx, 88, statsY, 904, 252, 30, 0.16, 0.16);
 
   ctx.fillStyle = `rgb(${data.palette.text.join(",")})`;
-  ctx.font = "700 28px Inter, sans-serif";
-  ctx.fillText(getShareMoodLabel(data.meta.theme), outerX + 52, statsCardY + 48);
+  ctx.font = "700 24px Inter, sans-serif";
+  ctx.fillText(getShareMoodLabel(data.meta.theme), 120, statsY + 42);
 
   const stats = (data.meta.stats || []).slice(0, 4);
   stats.forEach((stat, index) => {
     const col = index % 2;
     const row = Math.floor(index / 2);
-    const boxX = outerX + 52 + (col * 430);
-    const boxY = statsCardY + 82 + (row * 78);
+    const x = 120 + (col * 424);
+    const y = statsY + 86 + (row * 84);
 
     ctx.fillStyle = `rgb(${data.palette.muted.join(",")})`;
-    ctx.font = "700 20px Inter, sans-serif";
-    const statLabel = String(stat.label || "").toUpperCase();
-    drawWrappedCanvasText(ctx, statLabel, boxX, boxY, 330, 24, 2);
+    ctx.font = "700 18px Inter, sans-serif";
+    drawCanvasLines(ctx, String(stat.label || "").toUpperCase(), x, y, 300, 22, 2);
 
-    ctx.fillStyle = `rgb(${data.palette.text.join(",")})`;
     const value = String(stat.value || "");
-    const valueSize = fitCanvasFont(ctx, value, 330, 36, 24, 800, "Inter, sans-serif", 2);
+    const valueSize = fitCanvasFontSize(ctx, value, 300, 34, 22, 800, "Inter, sans-serif", 2);
+    ctx.fillStyle = `rgb(${data.palette.text.join(",")})`;
     ctx.font = `800 ${valueSize}px Inter, sans-serif`;
-    drawWrappedCanvasText(ctx, value, boxX, boxY + 34, 330, Math.round(valueSize * 1.1), 2);
+    drawCanvasLines(ctx, value, x, y + 32, 300, Math.round(valueSize * 1.08), 2);
   });
 
-  currentY = statsCardY + statsCardH + 30;
-
-  const momentsCardY = currentY;
-  const momentsCardH = 280;
-  ctx.fillStyle = "rgba(255,255,255,0.16)";
-  roundRect(ctx, outerX + 24, momentsCardY, outerW - 48, momentsCardH, 30, true, false);
+  const momentsY = statsY + 284;
+  drawGlassPanel(ctx, 88, momentsY, 904, 278, 30, 0.16, 0.16);
 
   ctx.fillStyle = `rgb(${data.palette.text.join(",")})`;
-  ctx.font = "700 26px Inter, sans-serif";
-  ctx.fillText("A few moments from the week", outerX + 52, momentsCardY + 48);
+  ctx.font = "700 24px Inter, sans-serif";
+  ctx.fillText("A few moments from the week", 120, momentsY + 42);
 
+  const moments = data.moments.length ? data.moments : ["A few small moments added up into something worth remembering."];
+  let momentY = momentsY + 92;
   ctx.fillStyle = `rgb(${data.palette.muted.join(",")})`;
-  ctx.font = "500 26px Inter, sans-serif";
-  let momentY = momentsCardY + 96;
-  const safeMoments = data.moments.length ? data.moments : ["A few small moments added up into something worth remembering."];
-  safeMoments.slice(0, 3).forEach((moment) => {
-    momentY = drawWrappedCanvasText(ctx, `• ${moment}`, outerX + 52, momentY, outerW - 120, 34, 2) + 16;
+  ctx.font = "500 24px Inter, sans-serif";
+  moments.slice(0, 3).forEach((moment) => {
+    momentY = drawCanvasLines(ctx, `• ${moment}`, 120, momentY, 820, 32, 2) + 14;
   });
 
+  const footerY = cardY + cardH - 34;
   ctx.fillStyle = `rgb(${data.palette.text.join(",")})`;
-  ctx.font = "600 22px Inter, sans-serif";
-  ctx.fillText("Made with WeekWrap", outerX + 30, outerY + outerH - 26);
+  ctx.font = "600 20px Inter, sans-serif";
+  ctx.fillText("Made with WeekWrap", 88, footerY);
 
   return canvas;
 }
@@ -1361,13 +1364,12 @@ function roundRect(ctx, x, y, width, height, radius, fill, stroke) {
 }
 
 function wrapCanvasText(ctx, text, x, y, maxWidth, lineHeight) {
-  return drawWrappedCanvasText(ctx, text, x, y, maxWidth, lineHeight);
+  return drawCanvasLines(ctx, text, x, y, maxWidth, lineHeight);
 }
 
 async function shareCurrentWrapImage() {
   const canvas = renderShareCanvas();
   if (!canvas) return;
-
   const meta = getDisplayedMeta();
   const fileName = `weekwrap-${sanitizeShareFileName(getDisplayedLabel())}.png`;
   const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
@@ -1387,14 +1389,15 @@ async function shareCurrentWrapImage() {
         text: meta?.shareCaption || getDisplayedLabel(),
         files: [file]
       });
-    } else {
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = fileName;
-      link.click();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      return;
     }
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   } finally {
     if (shareImageButton) {
       shareImageButton.disabled = false;
