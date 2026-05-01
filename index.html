@@ -71,19 +71,37 @@
             <button id="addButton" class="primary-btn" type="button">Add</button>
             <button id="dictateButton" class="ghost-btn dictate-btn" type="button">Dictate</button>
           </div>
-          <p class="helper-text">Messy, quick, and real is perfect.</p>
+          <div class="moment-prompts" aria-label="Quick moment prompts">
+            <button class="moment-chip" type="button" data-prompt="Something good that happened today: ">Good thing</button>
+            <button class="moment-chip" type="button" data-prompt="Something hard I got through: ">Hard thing</button>
+            <button class="moment-chip" type="button" data-prompt="A funny or weird moment: ">Funny moment</button>
+            <button class="moment-chip" type="button" data-prompt="Someone I spent time with: ">Someone</button>
+            <button class="moment-chip" type="button" data-prompt="Something I accomplished: ">Win</button>
+          </div>
+          <p class="helper-text">Tap a prompt or type one quick moment. Messy and real is perfect.</p>
           <p id="dictateStatus" class="dictate-status" aria-live="polite"></p>
         </section>
 
         <section class="notes glass-panel">
-          <div class="section-head">
-            <h2 id="notesTitle">This week so far</h2>
+          <div class="section-head notes-head">
+            <div>
+              <h2 id="notesTitle">This week so far</h2>
+              <p class="section-subtitle">Your notes stay hidden until they become part of the wrap.</p>
+            </div>
             <span id="noteCount" class="meta-pill">0 notes</span>
           </div>
-          <ul id="notesList" class="notes-list"></ul>
-          <div id="emptyState" class="empty-state">
-            Nothing yet. Start with one small thing from today.
+          <div class="note-privacy-card">
+            <div class="note-privacy-icon">*</div>
+            <div>
+              <strong>Moments saved privately</strong>
+              <p id="emptyState" class="empty-state">Nothing yet. Start with one small thing from today.</p>
+            </div>
           </div>
+          <div class="note-actions">
+            <button id="deleteLastNoteButton" class="ghost-btn subtle-danger-btn" type="button" disabled>Delete last note</button>
+            <button id="deleteThisWeekButton" class="ghost-btn danger-btn" type="button" disabled>Delete this week</button>
+          </div>
+          <ul id="notesList" class="notes-list hidden-week-content"></ul>
         </section>
 
         <section class="wrap-shell glass-panel">
@@ -103,18 +121,26 @@
           </div>
 
           <div class="wrap-actions wrap-actions-primary">
-            <button id="openWrapButton" class="ghost-btn primary-open-btn" type="button">Open your wrap</button>
-            <button id="downloadWrapButton" class="ghost-btn" type="button">Download PDF</button>
+            <button id="openWrapButton" class="ghost-btn primary-open-btn" type="button">Generate wrap</button>
             <button id="startNewWeekButton" class="ghost-btn danger-btn" type="button">Start new week</button>
           </div>
           <div class="wrap-actions wrap-actions-share">
+            <div class="export-style-picker">
+              <label for="exportStyleSelect">Share style</label>
+              <select id="exportStyleSelect" class="export-style-select">
+                <option value="spotify">Spotify Wrapped style</option>
+                <option value="apple">Apple-style clean luxury</option>
+                <option value="instagram">Instagram carousel style</option>
+                <option value="editorial">Minimal black/white editorial</option>
+              </select>
+            </div>
             <button id="shareImageButton" class="ghost-btn share-btn" type="button">Share image</button>
             <button id="downloadImageButton" class="ghost-btn" type="button">Download image</button>
             <button id="copyCaptionButton" class="ghost-btn" type="button">Copy caption</button>
           </div>
 
           <div id="slidesEmpty" class="slides-empty">
-            Add notes during the week. Your wrap unlocks on Sunday when you open it.
+            Add notes during the week. Generate your wrap when you are ready, then reopen the same version anytime.
           </div>
 
           <div id="slidesArea" class="slides-area hidden">
@@ -136,7 +162,7 @@
       </section>
     </main>
 
-    <button id="testRecapButton" class="test-button" type="button">Test wrap</button>
+    <button id="testRecapButton" class="test-button" type="button">Generate wrap</button>
   </div>
 
 
@@ -191,8 +217,8 @@
         <div class="tutorial-step">
           <div class="tutorial-step-number">2</div>
           <div>
-            <h3>Preview it anytime</h3>
-            <p>Use <strong>Test wrap</strong> whenever you want to see how your week turns into a recap.</p>
+            <h3>Generate it when you are ready</h3>
+            <p>Use <strong>Generate wrap</strong> once you are ready to turn your week into a recap.</p>
           </div>
         </div>
         <div class="tutorial-step">
