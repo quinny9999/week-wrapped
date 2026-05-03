@@ -2226,17 +2226,19 @@ noteInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter") addNote();
 });
 
-testRecapButton.addEventListener("click", async () => {
-  const weekNotes = getNotesForWeek(activeWeekId);
-  if (!weekNotes.length || hasGeneratedActiveWrap()) return;
-  setStatus("Generating your wrap...", false);
-  const slides = await generateSlidesForWeek(weekNotes);
-  renderSlides(slides);
-  storeActiveGeneratedWrap(slides, currentWrapMeta);
-  openReveal(slides, "Your week is ready", currentWrapTheme);
-  setStatus("Wrap generated", true);
-  updateOpenWrapButton();
-});
+if (testRecapButton) {
+  testRecapButton.addEventListener("click", async () => {
+    const weekNotes = getNotesForWeek(activeWeekId);
+    if (!weekNotes.length || hasGeneratedActiveWrap()) return;
+    setStatus("Generating your wrap...", false);
+    const slides = await generateSlidesForWeek(weekNotes);
+    renderSlides(slides);
+    storeActiveGeneratedWrap(slides, currentWrapMeta);
+    openReveal(slides, "Your week is ready", currentWrapTheme);
+    setStatus("Wrap generated", true);
+    updateOpenWrapButton();
+  });
+}
 
 openWrapButton.addEventListener("click", async () => {
   if (selectedView.type === "archive") {
