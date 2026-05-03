@@ -5,6 +5,7 @@ const signUpButton = document.getElementById("signUpButton");
 const signInButton = document.getElementById("signInButton");
 const logoutButton = document.getElementById("logoutButton");
 const loginStatus = document.getElementById("loginStatus");
+const forgotEmailButton = document.getElementById("forgotEmailButton");
 const openTutorialButton = document.getElementById("openTutorialButton");
 const loadDemoButton = document.getElementById("loadDemoButton");
 const tutorialOverlay = document.getElementById("tutorialOverlay");
@@ -36,10 +37,15 @@ function setLoginStatus(message, isError = false) {
   loginStatus.classList.toggle("error", !!isError);
 }
 
+function showForgotEmailButton(show = true) {
+  forgotEmailButton?.classList.toggle("hidden", !show);
+}
+
 function updateAuthUI(user) {
   signedInUser = user || null;
   if (signedInUser) {
     setLoginStatus(`Signed in as ${signedInUser.email}`);
+    showForgotEmailButton(false);
     if (authStatePill) authStatePill.textContent = signedInUser.email;
     if (heroLoginStatus) heroLoginStatus.textContent = "Account active. Your saved weeks travel with you.";
     openSignInModalButton?.classList.add("hidden");
@@ -48,6 +54,7 @@ function updateAuthUI(user) {
     closeAuthModal();
   } else {
     setLoginStatus("Not signed in.");
+    showForgotEmailButton(false);
     if (authStatePill) authStatePill.textContent = "Not signed in";
     if (heroLoginStatus) heroLoginStatus.textContent = "Log in to keep your weeks saved across devices.";
     openSignInModalButton?.classList.remove("hidden");
@@ -109,6 +116,33 @@ async function signInWithPassword() {
       ? "No account found for that email. Try Sign up."
       : (err?.message || "Could not sign in.");
     setLoginStatus(msg, true);
+    showForgotEmailButton(true);
+  }
+}
+
+async function sendForgotEmail() {
+  if (!firebaseAuth) {
+    setLoginStatus("Firebase is not configured yet.", true);
+    return;
+  }
+  const email = (loginEmailInput?.value || "").trim();
+  if (!email) {
+    setLoginStatus("Enter your email first, then tap Forgot email.", true);
+    showForgotEmailButton(true);
+    return;
+  }
+  setLoginStatus("Sending login email...");
+  try {
+    await firebaseAuth.sendPasswordResetEmail(email);
+    setLoginStatus("Login email sent. Check your inbox and junk/spam folder.");
+    showForgotEmailButton(false);
+  } catch (err) {
+    console.error(err);
+    const msg = err?.code === "auth/user-not-found"
+      ? "No account found for that email. Check the address or create an account."
+      : (err?.message || "Could not send login email. Check your email address and try again.");
+    setLoginStatus(msg, true);
+    showForgotEmailButton(true);
   }
 }
 
@@ -134,6 +168,7 @@ function openAuthModal(mode = "signin") {
     : "Sign in to open your saved weeks and keep building your archive.";
   if (signInButton) signInButton.textContent = isSignUp ? "Create account" : "Log in";
   if (signUpButton) signUpButton.textContent = isSignUp ? "I already have an account" : "Create account";
+  showForgotEmailButton(false);
   authModal.classList.remove("hidden");
   authModal.setAttribute("aria-hidden", "false");
   document.body.classList.add("modal-open");
@@ -180,6 +215,7 @@ function initFirebaseAuth() {
       openAuthModal("signup");
     }
   });
+  forgotEmailButton?.addEventListener("click", sendForgotEmail);
   logoutButton?.addEventListener("click", logoutFirebaseUser);
   openSignInModalButton?.addEventListener("click", () => openAuthModal("signin"));
   openSignUpModalButton?.addEventListener("click", () => openAuthModal("signup"));
