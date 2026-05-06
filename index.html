@@ -6,125 +6,147 @@
   <title>WeekWrap</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div class="app-shell">
-<div class="bg-orb orb-1"></div>
-    <div class="bg-orb orb-2"></div>
-    <div class="bg-orb orb-3"></div>
+    <div class="ambient-bg">
+      <div class="orb orb-1"></div>
+      <div class="orb orb-2"></div>
+      <div class="orb orb-3"></div>
+      <div class="grid-overlay"></div>
+    </div>
 
     <main class="app-layout">
-      <aside id="historyDrawer" class="history-panel glass-panel">
-        <div class="history-head"><div>
-            <div class="history-kicker">Saved weeks</div>
-            <h2>Previous wraps</h2>
+      <aside id="historyDrawer" class="history-panel">
+        <div class="history-head">
+          <div>
+            <div class="history-kicker">Archive</div>
+            <h2 class="history-title">Past weeks</h2>
           </div>
-          <div class="sidebar-actions"><button id="backToThisWeekButton" class="ghost-btn sidebar-btn" type="button">This week</button><button id="deleteAllWeeksButton" class="ghost-btn subtle-danger-btn sidebar-btn" type="button">Delete all</button></div>
+          <div class="sidebar-actions">
+            <button id="backToThisWeekButton" class="pill-btn sidebar-btn" type="button">↩ Now</button>
+            <button id="deleteAllWeeksButton" class="pill-btn pill-btn--danger sidebar-btn" type="button">Clear all</button>
+          </div>
         </div>
         <div id="weeksList" class="weeks-list"></div>
         <div id="weeksEmpty" class="weeks-empty">
-          When you start a new week, the finished one will land here.
+          <span class="weeks-empty-icon">◇</span>
+          <p>Your finished weeks will appear here when you start a new one.</p>
         </div>
       </aside>
 
       <section class="main-column">
-        
-<header class="hero glass-panel">
-  <div class="hero-grid">
-    <div class="hero-main">
-      <div class="hero-chip">Capture the week. Open it on Sunday.</div>
-      <div class="hero-logo-clean"><img src="logo.png" alt="logo" class="hero-logo-img"></div>
-      <p class="tagline">A futuristic weekly recap for your real life.</p>
-      <p class="hero-explainer">
-        Drop in the moments that mattered, then turn them into a swipeable AI wrap you can revisit, save, and share.
-      </p>
-      <div class="hero-quick-actions">
-        <button id="openTutorialButton" class="ghost-btn" type="button">How it works</button>
-        <button id="loadDemoButton" class="primary-btn" type="button">Try demo week</button>
-      </div>
-    </div>
 
-    <div class="hero-auth-card">
-      <div class="auth-mini-label">Account</div>
-      <div id="authStatePill" class="auth-state-pill">Not signed in</div>
-      <div class="hero-auth-actions">
-        <button id="openSignInModalButton" class="primary-btn auth-cta-btn" type="button">Log in</button>
-        <button id="openSignUpModalButton" class="ghost-btn auth-cta-btn" type="button">Sign up</button>
-        <button id="logoutButton" class="ghost-btn auth-cta-btn hidden" type="button">Log out</button>
-      </div>
-      <div id="heroLoginStatus" class="hero-login-status">Your weeks stay saved when you log in.</div>
-    </div>
-  </div>
-</header>
+        <header class="hero-card">
+          <div class="hero-grid">
+            <div class="hero-main">
+              <div class="hero-eyebrow">
+                <span class="eyebrow-dot"></span>
+                Capture the week. Open it on Sunday.
+              </div>
+              <div class="hero-logo-wrap">
+                <img src="logo.png" alt="WeekWrap" class="hero-logo-img" />
+              </div>
+              <p class="hero-tagline">A cinematic recap for your real life.</p>
+              <p class="hero-description">
+                Drop in the moments that mattered, then turn them into a swipeable AI wrap you can revisit, save, and share.
+              </p>
+              <div class="hero-actions">
+                <button id="openTutorialButton" class="outline-btn" type="button">How it works</button>
+                <button id="loadDemoButton" class="cta-btn" type="button">
+                  <span class="btn-icon">▶</span> Try demo week
+                </button>
+              </div>
+            </div>
 
-        <section class="composer glass-panel">
-          <label for="noteInput" class="input-label">What happened?</label>
-          <div class="input-row">
+            <div class="hero-auth-card">
+              <div class="auth-card-label">Account</div>
+              <div id="authStatePill" class="auth-state-pill">Not signed in</div>
+              <div class="hero-auth-actions">
+                <button id="openSignInModalButton" class="cta-btn auth-cta-btn" type="button">Log in</button>
+                <button id="openSignUpModalButton" class="outline-btn auth-cta-btn" type="button">Sign up</button>
+                <button id="logoutButton" class="outline-btn auth-cta-btn hidden" type="button">Log out</button>
+              </div>
+              <p id="heroLoginStatus" class="hero-login-status">Your weeks stay saved when you log in.</p>
+            </div>
+          </div>
+        </header>
+
+        <section class="card composer-card">
+          <div class="card-inner-label">What happened?</div>
+          <label for="noteInput" class="sr-only">Add a moment</label>
+          <div class="composer-input-row">
             <input
               type="text"
               id="noteInput"
-              placeholder="Helped my friend move"
+              placeholder="Helped my friend move apartments…"
               maxlength="180"
             />
-            <button id="addButton" class="primary-btn" type="button">Add</button>
-            <button id="dictateButton" class="ghost-btn dictate-btn" type="button">Dictate</button>
+            <button id="addButton" class="cta-btn add-btn" type="button">Add</button>
+            <button id="dictateButton" class="icon-btn dictate-btn" type="button" title="Dictate">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+            </button>
           </div>
           <div class="moment-prompts" aria-label="Quick moment prompts">
-            <button class="moment-chip" type="button" data-prompt="Something good that happened today: ">Good thing</button>
-            <button class="moment-chip" type="button" data-prompt="Something hard I got through: ">Hard thing</button>
-            <button class="moment-chip" type="button" data-prompt="A funny or weird moment: ">Funny moment</button>
-            <button class="moment-chip" type="button" data-prompt="Someone I spent time with: ">Someone</button>
-            <button class="moment-chip" type="button" data-prompt="Something I accomplished: ">Win</button>
+            <button class="moment-chip" type="button" data-prompt="Something good that happened today: ">✦ Good thing</button>
+            <button class="moment-chip" type="button" data-prompt="Something hard I got through: ">◈ Hard thing</button>
+            <button class="moment-chip" type="button" data-prompt="A funny or weird moment: ">◎ Funny moment</button>
+            <button class="moment-chip" type="button" data-prompt="Someone I spent time with: ">◇ Someone</button>
+            <button class="moment-chip" type="button" data-prompt="Something I accomplished: ">◆ Win</button>
           </div>
-          <p class="helper-text">Tap a prompt or type one quick moment. Messy and real is perfect.</p>
+          <p class="helper-text">Tap a prompt or type a raw moment. Messy and real is perfect.</p>
           <p id="dictateStatus" class="dictate-status" aria-live="polite"></p>
         </section>
 
-        <section class="notes glass-panel">
-          <div class="section-head notes-head">
+        <section class="card notes-card">
+          <div class="card-head">
             <div>
               <h2 id="notesTitle">This week so far</h2>
-              <p class="section-subtitle">Your notes stay hidden until they become part of the wrap.</p>
+              <p class="card-subtitle">Notes stay hidden until they become your wrap.</p>
             </div>
-            <span id="noteCount" class="meta-pill">0 notes</span>
+            <span id="noteCount" class="count-badge">0 notes</span>
           </div>
-          <div class="note-privacy-card">
-            <div class="note-privacy-icon">*</div>
+
+          <div class="privacy-notice">
+            <div class="privacy-icon">⊛</div>
             <div>
-              <strong>Moments saved privately</strong>
+              <strong>Saved privately</strong>
               <p id="emptyState" class="empty-state">Nothing yet. Start with one small thing from today.</p>
             </div>
           </div>
+
           <div class="note-actions">
-            <button id="deleteLastNoteButton" class="ghost-btn subtle-danger-btn" type="button" disabled>Delete last note</button>
-            <button id="deleteThisWeekButton" class="ghost-btn danger-btn" type="button" disabled>Delete this week</button>
+            <button id="deleteLastNoteButton" class="pill-btn pill-btn--muted" type="button" disabled>Remove last</button>
+            <button id="deleteThisWeekButton" class="pill-btn pill-btn--danger" type="button" disabled>Delete week</button>
           </div>
+
           <ul id="notesList" class="notes-list hidden-week-content"></ul>
         </section>
 
-        <section class="wrap-shell glass-panel">
-          <div class="section-head wrap-head">
+        <section class="card wrap-card">
+          <div class="card-head wrap-head">
             <div>
               <h2 id="wrapTitle">Your weekly wrap</h2>
-              <p class="section-subtitle">One thought at a time, like a story.</p>
+              <p class="card-subtitle">One thought at a time, like a film.</p>
             </div>
             <span id="statusBadge" class="status-badge">Waiting for Sunday</span>
           </div>
 
-          <div id="wrapSummaryCard" class="wrap-summary-card hidden">
-            <div class="wrap-summary-topline">This week at a glance</div>
+          <div id="wrapSummaryCard" class="wrap-summary hidden">
+            <div class="wrap-summary-label">This week at a glance</div>
             <div id="wrapHeadline" class="wrap-headline">Your week will show up here.</div>
-            <div id="wrapInsight" class="wrap-insight">Add notes through the week and the app will pull out the thread.</div>
+            <div id="wrapInsight" class="wrap-insight">Add notes through the week and the app will surface the thread.</div>
             <div id="wrapStats" class="wrap-stats"></div>
           </div>
 
-          <div class="wrap-actions wrap-actions-primary">
-            <button id="openWrapButton" class="ghost-btn primary-open-btn" type="button">Generate wrap</button>
-            <button id="startNewWeekButton" class="ghost-btn danger-btn" type="button">Start new week</button>
+          <div class="wrap-actions-row">
+            <button id="openWrapButton" class="outline-btn primary-open-btn" type="button">Generate wrap</button>
+            <button id="startNewWeekButton" class="pill-btn pill-btn--danger" type="button">Start new week</button>
           </div>
-          <div class="wrap-actions wrap-actions-share">
+
+          <div class="wrap-share-row">
             <div class="export-style-picker">
               <label for="exportStyleSelect">Share style</label>
               <select id="exportStyleSelect" class="export-style-select">
@@ -134,120 +156,119 @@
                 <option value="editorial">Minimal black/white editorial</option>
               </select>
             </div>
-            <button id="shareImageButton" class="ghost-btn share-btn" type="button">Share image</button>
-            <button id="downloadImageButton" class="ghost-btn" type="button">Download image</button>
-            <button id="copyCaptionButton" class="ghost-btn" type="button">Copy caption</button>
+            <div class="share-btn-group">
+              <button id="shareImageButton" class="cta-btn share-btn" type="button">↑ Share</button>
+              <button id="downloadImageButton" class="outline-btn" type="button">Download</button>
+              <button id="copyCaptionButton" class="outline-btn" type="button">Copy caption</button>
+            </div>
           </div>
 
-          <div id="slidesEmpty" class="slides-empty">
-            Add notes during the week. Generate your wrap when you are ready, then reopen the same version anytime.
-          </div>
+          <p id="slidesEmpty" class="slides-empty">
+            Add notes during the week. Generate your wrap when you're ready, then reopen anytime.
+          </p>
 
           <div id="slidesArea" class="slides-area hidden">
             <div class="progress-shell">
               <div id="progressBar" class="progress-bar"></div>
             </div>
-
             <div class="slides-viewport">
               <div id="slidesTrack" class="slides-track"></div>
             </div>
-
             <div class="slides-controls">
-              <button id="prevSlide" class="ghost-btn" type="button">Back</button>
+              <button id="prevSlide" class="nav-btn" type="button">←</button>
               <div id="slideLabel" class="slide-label">1 / 1</div>
-              <button id="nextSlide" class="ghost-btn" type="button">Next</button>
+              <button id="nextSlide" class="nav-btn" type="button">→</button>
             </div>
           </div>
         </section>
+
       </section>
     </main>
   </div>
 
+  <!-- Auth Modal -->
+  <div id="authModal" class="modal-overlay hidden" aria-hidden="true">
+    <div id="authModalBackdrop" class="modal-backdrop"></div>
+    <div class="modal-panel">
+      <button id="closeAuthModalButton" class="modal-close" type="button" aria-label="Close">×</button>
+      <div class="modal-eyebrow">WeekWrap account</div>
+      <h2 id="authModalTitle" class="modal-title">Log in</h2>
+      <p id="authModalSubtitle" class="modal-subtitle">Save your weeks and pick up where you left off.</p>
 
+      <div class="auth-form">
+        <label class="form-label" for="loginEmail">Email</label>
+        <input id="loginEmail" class="form-input" type="email" placeholder="you@example.com" autocomplete="email" />
 
-  
-  <div id="authModal" class="auth-modal hidden" aria-hidden="true">
-    <div id="authModalBackdrop" class="auth-modal-backdrop"></div>
-    <div class="auth-modal-panel glass-panel">
-      <button id="closeAuthModalButton" class="drawer-close modal-close" type="button" aria-label="Close">×</button>
-      <div class="auth-modal-topline">WeekWrap account</div>
-      <h2 id="authModalTitle">Log in</h2>
-      <p id="authModalSubtitle" class="auth-modal-subtitle">Save your weeks and pick up where you left off.</p>
-
-      <div class="auth-form-grid">
-        <label class="auth-label" for="loginEmail">Email</label>
-        <input id="loginEmail" class="auth-input" type="email" placeholder="you@example.com" autocomplete="email" />
-
-        <label class="auth-label" for="loginPassword">Password</label>
-        <div class="password-shell">
-          <input id="loginPassword" class="auth-input" type="password" placeholder="At least 6 characters" autocomplete="current-password" />
-          <button id="togglePasswordButton" class="toggle-password-btn" type="button">Show</button>
+        <label class="form-label" for="loginPassword">Password</label>
+        <div class="password-wrap">
+          <input id="loginPassword" class="form-input" type="password" placeholder="At least 6 characters" autocomplete="current-password" />
+          <button id="togglePasswordButton" class="toggle-pwd-btn" type="button">Show</button>
         </div>
 
         <div class="auth-form-actions">
-          <button id="signInButton" class="primary-btn" type="button">Log in</button>
-          <button id="signUpButton" class="ghost-btn" type="button">Create account</button>
+          <button id="signInButton" class="cta-btn" type="button">Log in</button>
+          <button id="signUpButton" class="outline-btn" type="button">Create account</button>
         </div>
         <div id="loginStatus" class="login-status">Not signed in.</div>
-        <button id="forgotEmailButton" class="forgot-email-btn hidden" type="button">Forgot password? Email me a login link</button>
+        <button id="forgotEmailButton" class="forgot-btn hidden" type="button">Forgot password? Email me a login link</button>
       </div>
     </div>
   </div>
 
-
-  <div id="tutorialOverlay" class="tutorial-overlay hidden" aria-hidden="true">
-    <div class="tutorial-backdrop"></div>
-    <div class="tutorial-panel glass-panel">
+  <!-- Tutorial Overlay -->
+  <div id="tutorialOverlay" class="modal-overlay hidden" aria-hidden="true">
+    <div class="modal-backdrop"></div>
+    <div class="modal-panel tutorial-panel">
       <div class="tutorial-topbar">
         <div>
-          <div class="hero-chip">Quick tour</div>
-          <h2>How WeekWrap works</h2>
+          <div class="modal-eyebrow">Quick tour</div>
+          <h2 class="modal-title">How WeekWrap works</h2>
         </div>
-        <button id="closeTutorialButton" class="ghost-btn" type="button">Close</button>
+        <button id="closeTutorialButton" class="outline-btn" type="button">Close</button>
       </div>
-      <div class="tutorial-grid">
+      <div class="tutorial-steps">
         <div class="tutorial-step">
-          <div class="tutorial-step-number">1</div>
-          <div>
+          <div class="step-number">01</div>
+          <div class="step-content">
             <h3>Add moments during the week</h3>
-            <p>Keep it messy and real. One short sentence like “Got coffee with a friend” is enough.</p>
+            <p>Keep it messy and real. One short sentence like "Got coffee with a friend" is enough.</p>
           </div>
         </div>
         <div class="tutorial-step">
-          <div class="tutorial-step-number">2</div>
-          <div>
-            <h3>Generate it when you are ready</h3>
-            <p>Use <strong>Generate wrap</strong> once you are ready to turn your week into a recap.</p>
+          <div class="step-number">02</div>
+          <div class="step-content">
+            <h3>Generate when you're ready</h3>
+            <p>Use <strong>Generate wrap</strong> to turn your notes into a cinematic recap.</p>
           </div>
         </div>
         <div class="tutorial-step">
-          <div class="tutorial-step-number">3</div>
-          <div>
-            <h3>Open the real wrap on Sunday</h3>
-            <p>On Sunday, your saved week becomes your actual recap.</p>
+          <div class="step-number">03</div>
+          <div class="step-content">
+            <h3>Open it on Sunday</h3>
+            <p>On Sunday, your saved week becomes your actual wrap to revisit and share.</p>
           </div>
         </div>
       </div>
-      <div class="tutorial-demo-box">
+      <div class="tutorial-cta-box">
         <div>
-          <h3>Want to see it right now?</h3>
-          <p>Load a fake sample week so you can try the full experience in seconds.</p>
+          <h3>See it now</h3>
+          <p>Load a sample week to try the full experience in seconds.</p>
         </div>
-        <div class="tutorial-actions">
-          <button id="tutorialDemoButton" class="primary-btn" type="button">Load demo week</button>
-          <button id="tutorialExitButton" class="ghost-btn" type="button">Exit tutorial</button>
+        <div class="tutorial-cta-actions">
+          <button id="tutorialDemoButton" class="cta-btn" type="button">Load demo week</button>
+          <button id="tutorialExitButton" class="outline-btn" type="button">Exit tutorial</button>
         </div>
       </div>
     </div>
   </div>
 
-
+  <!-- Reveal Overlay -->
   <div id="revealOverlay" class="reveal-overlay hidden" aria-hidden="true">
     <div class="reveal-backdrop"></div>
     <div class="reveal-panel">
       <div class="reveal-topbar">
         <div id="revealTitle" class="reveal-title">Your week is ready</div>
-        <button id="closeRevealButton" class="ghost-btn" type="button">Close</button>
+        <button id="closeRevealButton" class="reveal-close-btn" type="button">✕ Close</button>
       </div>
       <div class="reveal-intro" id="revealIntro">
         <div class="reveal-intro-chip">WeekWrap</div>
@@ -259,9 +280,9 @@
         </div>
       </div>
       <div class="reveal-controls">
-        <button id="revealPrevButton" class="ghost-btn" type="button">Back</button>
+        <button id="revealPrevButton" class="reveal-nav-btn" type="button">←</button>
         <div id="revealCounter" class="slide-label">1 / 1</div>
-        <button id="revealNextButton" class="ghost-btn" type="button">Next</button>
+        <button id="revealNextButton" class="reveal-nav-btn" type="button">→</button>
       </div>
     </div>
   </div>

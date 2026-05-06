@@ -1337,15 +1337,15 @@ function buildShareCanvasData() {
 function getExportPalette(theme, styleChoice = getSelectedExportStyle()) {
   if (styleChoice === "editorial") {
     return {
-      bg: "#ffffff",
-      card: "#ffffff",
-      text: "#111111",
-      muted: "#555555",
-      accent: "#111111",
-      border: "#d9d9d9",
-      darkBg: "#111111",
-      darkText: "#ffffff",
-      darkMuted: "#d4d4d4"
+      bg: "#fafaf8",
+      card: "#f4f3f0",
+      text: "#0e0d0b",
+      muted: "#5a5855",
+      accent: "#0e0d0b",
+      border: "#dddbd8",
+      darkBg: "#0e0d0b",
+      darkText: "#f4f3f0",
+      darkMuted: "#b8b5b2"
     };
   }
   if (styleChoice === "apple") {
@@ -1354,41 +1354,63 @@ function getExportPalette(theme, styleChoice = getSelectedExportStyle()) {
       card: "#ffffff",
       text: "#1d1d1f",
       muted: "#6e6e73",
-      accent: "#8e8e93",
+      accent: "#2c2c2e",
       border: "#e5e5ea",
       darkBg: "#1d1d1f",
-      darkText: "#ffffff",
-      darkMuted: "#d2d2d7"
+      darkText: "#f5f5f7",
+      darkMuted: "#aeaeb2"
     };
   }
   if (styleChoice === "spotify") {
     return {
-      bg: "#150920",
-      card: "rgba(255,255,255,0.12)",
-      text: "#ffffff",
-      muted: "rgba(255,255,255,0.78)",
-      accent: "#1ed760",
-      border: "rgba(255,255,255,0.14)",
-      darkBg: "#070707",
-      darkText: "#ffffff",
-      darkMuted: "rgba(255,255,255,0.7)"
+      bg: "#08070c",
+      card: "rgba(255,255,255,0.07)",
+      text: "#f0ede8",
+      muted: "rgba(240,237,232,0.65)",
+      accent: "#d4a853",
+      border: "rgba(255,255,255,0.10)",
+      darkBg: "#050408",
+      darkText: "#f0ede8",
+      darkMuted: "rgba(240,237,232,0.55)"
     };
   }
+  /* default: gold cinema */
   return {
-    bg: "#fff7f2",
-    card: "#ffffff",
-    text: "#291d16",
-    muted: "#7a665c",
-    accent: "#ff7b54",
-    border: "#f3dcd1",
-    darkBg: "#2f1b19",
-    darkText: "#fff8f5",
-    darkMuted: "#ead4cb"
+    bg: "#0c0b10",
+    card: "rgba(255,255,255,0.05)",
+    text: "#f0ede8",
+    muted: "rgba(240,237,232,0.60)",
+    accent: "#d4a853",
+    border: "rgba(255,255,255,0.09)",
+    darkBg: "#08070c",
+    darkText: "#f0ede8",
+    darkMuted: "rgba(240,237,232,0.50)"
   };
 }
 
+function splitLongCanvasWord(ctx, word, maxWidth) {
+  const parts = [];
+  let part = "";
+  String(word || "").split("").forEach((char) => {
+    const test = `${part}${char}`;
+    if (part && ctx.measureText(test).width > maxWidth) {
+      parts.push(part);
+      part = char;
+    } else {
+      part = test;
+    }
+  });
+  if (part) parts.push(part);
+  return parts.length ? parts : [String(word || "")];
+}
+
 function splitCanvasLines(ctx, text, maxWidth) {
-  const words = String(text || "").split(/\s+/).filter(Boolean);
+  const words = String(text || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(" ")
+    .filter(Boolean)
+    .flatMap((word) => (ctx.measureText(word).width > maxWidth ? splitLongCanvasWord(ctx, word, maxWidth) : [word]));
   const lines = [];
   let line = "";
   words.forEach((word) => {
@@ -1458,38 +1480,38 @@ function roundRect(ctx, x, y, width, height, radius = 12, fill = false, stroke =
 }
 
 function paintExportBackground(ctx, palette, styleChoice, width, height, dark = false) {
-  if (styleChoice === "spotify") {
-    const gradient = ctx.createLinearGradient(0, 0, width, height);
-    gradient.addColorStop(0, dark ? "#050505" : "#4b148f");
-    gradient.addColorStop(0.45, dark ? "#16051f" : "#170b4d");
-    gradient.addColorStop(1, dark ? "#031d14" : "#09171f");
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, width, height);
-    ctx.fillStyle = "rgba(30,215,96,0.18)";
-    ctx.beginPath();
-    ctx.arc(width * 0.82, height * 0.18, 170, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "rgba(255,255,255,0.08)";
-    ctx.beginPath();
-    ctx.arc(width * 0.18, height * 0.8, 200, 0, Math.PI * 2);
-    ctx.fill();
-    return;
-  }
-  if (styleChoice === "instagram") {
-    const gradient = ctx.createLinearGradient(0, 0, width, height);
-    if (dark) {
-      gradient.addColorStop(0, "#3f1b21");
-      gradient.addColorStop(1, "#6f2f38");
-    } else {
-      gradient.addColorStop(0, "#fff7ef");
-      gradient.addColorStop(0.5, "#ffe9ef");
-      gradient.addColorStop(1, "#fff4dc");
-    }
-    ctx.fillStyle = gradient;
+  if (styleChoice === "editorial") {
+    ctx.fillStyle = dark ? palette.darkBg : palette.bg;
     ctx.fillRect(0, 0, width, height);
     return;
   }
-  ctx.fillStyle = dark ? palette.darkBg : palette.bg;
+  if (styleChoice === "apple") {
+    ctx.fillStyle = dark ? palette.darkBg : palette.bg;
+    ctx.fillRect(0, 0, width, height);
+    return;
+  }
+  /* Shared dark cinema base for spotify, instagram, default */
+  const bgg = ctx.createLinearGradient(0, 0, width, height);
+  if (dark) {
+    bgg.addColorStop(0, "#08070c");
+    bgg.addColorStop(1, "#0c0b10");
+  } else {
+    bgg.addColorStop(0, "#0c0b10");
+    bgg.addColorStop(1, "#0f0e18");
+  }
+  ctx.fillStyle = bgg;
+  ctx.fillRect(0, 0, width, height);
+  /* Gold top-left orb */
+  const grd1 = ctx.createRadialGradient(width * 0.15, height * 0.08, 0, width * 0.15, height * 0.08, 300);
+  grd1.addColorStop(0, "rgba(212,168,83,0.18)");
+  grd1.addColorStop(1, "transparent");
+  ctx.fillStyle = grd1;
+  ctx.fillRect(0, 0, width, height);
+  /* Purple bottom-right orb */
+  const grd2 = ctx.createRadialGradient(width * 0.88, height * 0.82, 0, width * 0.88, height * 0.82, 260);
+  grd2.addColorStop(0, "rgba(100,80,200,0.10)");
+  grd2.addColorStop(1, "transparent");
+  ctx.fillStyle = grd2;
   ctx.fillRect(0, 0, width, height);
 }
 
@@ -1506,8 +1528,8 @@ function renderExportHeader(ctx, palette, pageLabel, title, styleChoice = getSel
     ctx.fillStyle = dark ? palette.darkText : palette.text;
     ctx.font = "700 16px Inter, sans-serif";
     ctx.fillText(pageLabel.toUpperCase(), 70, 82);
-    ctx.font = "700 22px Inter, sans-serif";
-    ctx.fillText(title, 70, 120);
+    const headerTitleSize = fitCanvasFontSize(ctx, String(title || "This week"), 650, 1, 22, 14, 700);
+    drawFittedCanvasText(ctx, String(title || "This week"), 70, 120, 650, 1, headerTitleSize, 26, dark ? palette.darkText : palette.text, 700);
     ctx.strokeStyle = dark ? "rgba(255,255,255,0.2)" : palette.border;
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -1522,8 +1544,8 @@ function renderExportHeader(ctx, palette, pageLabel, title, styleChoice = getSel
   if (styleChoice === "apple") {
     drawCapsule(ctx, 70, 56, 200, 42, 21, dark ? "rgba(255,255,255,0.16)" : "#ffffff", pageLabel, dark ? palette.darkText : palette.text, "700 17px Inter, sans-serif");
     ctx.fillStyle = dark ? palette.darkText : palette.text;
-    ctx.font = "700 22px Inter, sans-serif";
-    ctx.fillText(title, 70, 135);
+    const headerTitleSize = fitCanvasFontSize(ctx, String(title || "This week"), 690, 1, 22, 14, 700);
+    drawFittedCanvasText(ctx, String(title || "This week"), 70, 135, 690, 1, headerTitleSize, 26, dark ? palette.darkText : palette.text, 700);
     ctx.textAlign = "right";
     ctx.fillStyle = dark ? palette.darkMuted : palette.muted;
     ctx.font = "700 18px Inter, sans-serif";
@@ -1534,8 +1556,8 @@ function renderExportHeader(ctx, palette, pageLabel, title, styleChoice = getSel
   if (styleChoice === "spotify") {
     drawCapsule(ctx, 70, 58, 220, 46, 23, "rgba(255,255,255,0.12)", pageLabel, palette.text);
     ctx.fillStyle = palette.text;
-    ctx.font = "800 26px Inter, sans-serif";
-    ctx.fillText(title, 70, 145);
+    const headerTitleSize = fitCanvasFontSize(ctx, String(title || "This week"), 690, 1, 26, 16, 800);
+    drawFittedCanvasText(ctx, String(title || "This week"), 70, 145, 690, 1, headerTitleSize, 30, palette.text, 800);
     ctx.textAlign = "right";
     ctx.font = "900 18px Inter, sans-serif";
     ctx.fillStyle = palette.accent;
@@ -1545,8 +1567,8 @@ function renderExportHeader(ctx, palette, pageLabel, title, styleChoice = getSel
   }
   drawCapsule(ctx, 70, 60, 238, 44, 22, palette.accent, pageLabel, "#ffffff");
   ctx.fillStyle = palette.text;
-  ctx.font = "800 24px Inter, sans-serif";
-  ctx.fillText(title, 70, 140);
+  const headerTitleSize = fitCanvasFontSize(ctx, String(title || "This week"), 690, 1, 24, 15, 800);
+  drawFittedCanvasText(ctx, String(title || "This week"), 70, 140, 690, 1, headerTitleSize, 28, palette.text, 800);
   ctx.textAlign = "right";
   ctx.fillStyle = palette.muted;
   ctx.font = "700 18px Inter, sans-serif";
@@ -1587,7 +1609,10 @@ function renderCoverExportPage(data, totalPages) {
 
   const headline = String(data.meta.headline || "This week had a story.");
   const insight = String(data.meta.insight || "A few small moments added up into something worth remembering.");
-  const stats = (data.meta.stats || []).slice(0, 4);
+  // The cover is the image most people share. Keep it clean and prevent overflow
+  // by showing only the strongest summary stats here; detailed moments remain on
+  // the following carousel pages.
+  const stats = (data.meta.stats || []).slice(0, 2);
 
   if (styleChoice === "spotify") {
     ctx.fillStyle = "rgba(255,255,255,0.11)";
@@ -1615,7 +1640,7 @@ function renderCoverExportPage(data, totalPages) {
     ctx.font = "900 22px Inter, sans-serif";
     ctx.fillText("TOP MOMENTS", 96, momentY);
     momentY += 38;
-    data.moments.slice(0, 3).forEach((moment) => {
+    data.moments.slice(0, 2).forEach((moment) => {
       ctx.fillStyle = "rgba(255,255,255,0.1)";
       roundRect(ctx, 96, momentY, 834, 96, 24, true, false);
       const size = fitCanvasFontSize(ctx, String(moment), 780, 2, 28, 18, 600);
@@ -1665,7 +1690,7 @@ function renderCoverExportPage(data, totalPages) {
     ctx.font = "700 16px Inter, sans-serif";
     ctx.fillText("NOTABLE MOMENTS", 108, y);
     y += 34;
-    data.moments.slice(0, 3).forEach((moment, index) => {
+    data.moments.slice(0, 2).forEach((moment, index) => {
       ctx.font = "600 20px Inter, sans-serif";
       ctx.fillText(`${index + 1}.`, 108, y);
       drawFittedCanvasText(ctx, String(moment), 142, y, 808, 3, 22, 31, palette.text, 500);
@@ -1717,7 +1742,7 @@ function renderCoverExportPage(data, totalPages) {
   ctx.font = "800 24px Inter, sans-serif";
   ctx.fillText(styleChoice === "apple" ? "Highlights" : "Top moments", 96, momentsTop);
   let momentY = momentsTop + 52;
-  const moments = data.moments.length ? data.moments.slice(0, 3) : ["A few small moments added up into something worth remembering."];
+  const moments = data.moments.length ? data.moments.slice(0, 2) : ["A few small moments added up into something worth remembering."];
   moments.forEach((moment) => {
     if (styleChoice === "instagram") {
       ctx.fillStyle = "rgba(255,255,255,0.74)";
