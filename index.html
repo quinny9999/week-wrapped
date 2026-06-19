@@ -18,9 +18,23 @@
       <div class="grid-overlay"></div>
     </div>
 
+    <div id="drawerScrim" class="drawer-scrim hidden" aria-hidden="true"></div>
+
+    <div class="floating-shell-bar" aria-label="WeekWrap quick navigation">
+      <button id="menuToggleButton" class="menu-toggle" type="button" aria-label="Open archive">
+        <span></span><span></span><span></span>
+      </button>
+      <div class="brand-chip">
+        <span class="brand-mark">WW</span>
+        <span class="brand-copy">WeekWrap</span>
+      </div>
+      <div class="shell-meta">Sunday-ready recaps</div>
+    </div>
+
     <main class="app-layout">
       <aside id="historyDrawer" class="history-panel">
         <div class="history-head">
+          <button id="closeMenuButton" class="drawer-close" type="button" aria-label="Close archive">×</button>
           <div>
             <div class="history-kicker">Archive</div>
             <h2 class="history-title">Past weeks</h2>
@@ -217,7 +231,7 @@
 
   <!-- Tutorial Overlay -->
   <div id="tutorialOverlay" class="modal-overlay hidden" aria-hidden="true">
-    <div class="modal-backdrop"></div>
+    <div class="modal-backdrop tutorial-backdrop"></div>
     <div class="modal-panel tutorial-panel">
       <div class="tutorial-topbar">
         <div>
